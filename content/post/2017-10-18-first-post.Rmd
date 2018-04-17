@@ -1,0 +1,92 @@
+---
+title: Chris is starting a blog in 2017
+author: Chris Miles
+date: '2017-10-18'
+slug: first-post
+categories: ['potpourri']
+tags: ['blog','blogdown','hugo']
+lastmod: '2017-10-18'
+header:
+  image: "headers/hugo-logo.png"
+summary: "The debut post on this blog, mostly consisting of rambling about its creation: both *why* and *how*. "
+---
+
+#Why?
+
+A quick Google search turns up articles from as early as 2012 insisting that blogging [is a dead medium](https://www.fastcompany.com/3003658/why-blogging-dead-and-whats-next). While this premonition didn't turn out to be completly true, I think it is fair to say blogging isn't in its heyday.^[but live-tweeting every thought might be?] So, *why* am I starting a blog now?
+
+###Unavailability of low-stakes writing in academia
+
+In my day-to-day life, I do a fair amount of writing, but it's a very specific type, mostly comprising of technical papers and grant proposals. In both of these contexts, I'm trying to *sell an idea*. In doing so, this doesn't leave a lot of room for writing about expository thoughts that aren't fully fleshed out or are only tangentially relevant. This blog will be my place to go down these rabbit holes. 
+
+###Documenting non-research ideas
+
+Currently, whenever I find some exciting mathematical result that slipped through the cracks in my education, I race to alert my officemates and force them to listen as I go through an excruciatingly long explanation on our white board. This blog will (hopefully) spare them of those occurrences! 
+
+#Who is this blog written for?
+
+Nobody. Or really, myself. I don't expect anyone to read or care about anything I post. That said, I wouldn't be too upset if anyone happens to stumble in here.
+
+#You changed your website *again*? What heck is Hugo?^[actual quote, from my officemate]
+
+My previous academic personal site was made from a modified an HTML template, such as the beautiful ones found on [HTML5Up](https://html5up.net/). I've seen a lot of academics go this route recently, and while it was working fine (aside from being a bit annoying to edit), it lacked a critical feature for me to start my blog: *a blog*. 
+
+I had initially considered [Jekyll](https://jekyllrb.com/), which I've seen a few academics use, but the internet (reddit) contends that [Hugo](http://gohugo.io) is the modern choice, citing its *blazing speed* generating websites in 1 ms in stead of 10 ms. This didn't really matter to me, but a key other ingredient sold me on Hugo: [blogdown](https://bookdown.org/yihui/blogdown/).
+
+The pipeline with blogdown and Hugo seems ideal for blogs with heavy mathematical and programming content. Posts and pages are written in Rmarkdown (basically just vanilla Markdown with R code evaluation) and then converted to an appropriate format by blogdown, and ultimately pushed to the website using Hugo. 
+
+###What sort of fancy things can you do that made all this effort worth it?
+
+One requirement I had was LaTeX support, which is straightforward with Hugo:
+$$ \mathrm{d}X_t = \mu X_t \mathrm{d} t + \sigma X_t \mathrm{d} W_t. $$
+
+Because the posts are written in Rmarkdown, R code embeds seamlessly, including plots
+
+```{r eval=TRUE}
+pie(c(Sky = 78, "Sunny side of pyramid" = 17, "Shady side of pyramid" = 5),
+    init.angle = 315, col = c("deepskyblue", "yellow", "yellow3"), border = FALSE)
+```
+
+While possible to make R's plots look pretty, I was hoping to make the plots interactive in some way, which it turns out is exactly what htmlwidgets and the usfeul R package [widgetframes](https://github.com/bhaskarvk/widgetframe) provides. With htmlwidgets, I can now use a bunch of nice R libraries like [plotly](https://plot.ly/) and [leaflet](https://rstudio.github.io/leaflet/).
+
+For example, here is an interactive Plotly plot
+```{r eval=TRUE,tidy=TRUE,warning=FALSE,message=FALSE}
+library(plotly)
+library(widgetframe)
+library(gapminder)
+
+g<- gapminder 
+pp<- plot_ly(
+    x = g$gdpPercap, 
+    y = g$lifeExp, 
+    size = g$pop, 
+    color = g$continent, 
+    frame = g$year, 
+    text = g$country, 
+    hoverinfo = "text",
+    type = 'scatter',
+    mode = 'markers'
+  )%>% 
+layout(
+    xaxis = list(
+      type = "log", title='$ GDP/capita'
+    ),
+    yaxis = list(
+      title='life expect'
+    )
+  )
+
+frameWidget(pp)
+```
+and Leaflet
+```{r eval=TRUE,tidy=TRUE,warning=FALSE,message=FALSE}
+library(leaflet)
+library(widgetframe)
+
+m <- leaflet() %>%
+addTiles() %>%  # Add default OpenStreetMap map tiles
+addMarkers(lng=174.768, lat=-36.852, popup="The birthplace of R")
+frameWidget(m)
+```
+
+These are far cry away in fanciness from posts by the [New York Times](https://www.nytimes.com/interactive/2016/04/11/upshot/for-the-poor-geography-is-life-and-death.html), but I'm pretty happy with the capabilities. I'm now out of excuses to avoid adding actual content to the blog.  

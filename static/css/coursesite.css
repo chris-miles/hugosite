@@ -1,0 +1,143 @@
+/* Space out content a bit */
+body{
+  padding-top: 20px;
+  padding-bottom: 20px;
+  text-align:center;
+}
+
+button:before {
+  font-family: 'entypo', sans-serif;
+  color: white;
+  position: absolute;
+  right: 40px;
+  font-size: 2em;
+  top: 25%;
+  z-index: 10;
+}
+
+pp {
+  text-align: left;
+}
+
+.btn{
+  margin: 13px 12px 12px 10px;
+    border: none;
+     background-color: #B80000; /* Green */
+    font-size: 24px;
+	border-radius:0;
+    -webkit-transition-duration: 0.4s; /* Safari */
+    transition-duration: 0.4s;
+}
+
+.btn:hover {
+    opacity: 0.6;
+     background-color: #B80000; /* Green */	
+}
+
+a:link:not(.btn) {
+    text-decoration: none;
+    color:#B80000;
+}
+
+
+a:visited:not(.btn) {
+    text-decoration: none;
+    color:#BF8B8B;
+}
+
+a:hover:not(.btn) {
+    text-decoration: underline;
+
+}
+
+a:active:not(.btn) {
+    text-decoration: underline;
+}
+
+.page-header {
+      text-transform: uppercase;
+      text-align:center;
+}
+
+.page-header img{
+  padding-top:30px;
+}
+
+h1{color: #424242; font-weight:bold; }
+h2{color: #424242; }
+h4{
+      color: #424242;
+        text-transform: uppercase;
+        font-weight:bold;
+        text-align:center;
+}
+
+h3{
+      color: #424242;
+        text-transform: uppercase;
+        font-weight:bold;
+        text-align:center;
+}
+
+h5{
+      color: #424242;
+        text-transform: uppercase;
+        text-align:left;
+}
+
+
+/* Everything but the jumbotron gets side spacing for mobile first views */
+.marketing,
+.footer {
+  padding-right: 15px;
+  padding-left: 15px;
+}
+
+
+/* Custom page footer */
+.footer {
+  padding-top: 19px;
+  color: #777;
+  border-top: 1px solid #e5e5e5;
+  text-align:center;
+}
+
+/* Customize container */
+@media (min-width: 768px) {
+  .container {
+    max-width: 850px;
+  }
+}
+.container-narrow > hr {
+  margin: 30px 0;
+}
+
+
+
+/* Supporting marketing content */
+.marketing {
+  margin: 40px 0;
+}
+.marketing p + h4 {
+  margin-top: 28px;
+}
+
+/* Responsive: Portrait tablets and up */
+@media screen and (min-width: 768px) {
+  /* Remove the padding we set earlier */
+  .marketing,
+  .footer {
+    padding-right: 0;
+    padding-left: 0;
+  }
+  /* Space out the masthead */
+
+  /* Remove the bottom border on the jumbotron for visual effect */
+  .page-header {
+    border-bottom: 0;
+  }
+}
+
+tt {
+    font-family: "Lucida Console", Monaco, monospace;
+}

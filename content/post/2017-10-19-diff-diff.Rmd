@@ -1,0 +1,344 @@
+---
+title: 'Diffusing diffusivities, stochastic subordination'
+author: Chris Miles
+date: '2017-12-06' #'`r format(Sys.time(), "%Y-%m-%d")`'
+slug: diff-diff
+categories:
+  - math
+  - physics
+tags:
+  - stochastics
+  - probability
+  - diffusion
+  - Brownian motion
+  - subordination
+summary: "In this post, I'll discuss some recent explanations for anomalous, yet Gaussian diffusion, including diffusing diffusivities and stochastic subordination. "
+---
+
+In this post, I'll discuss an idea emerging in the statistical physics community
+that attempts to resolve some unexplained observations of motion of single particles.^[much of the content in this post is taken from (great) slides by Mykyta Chubynsky <a href="http://chubynsky.info/pres/oth13.pdf"><i class="fa fa-file-pdf-o fa-1x"></i></a>]
+
+# Anomalous yet Brownian
+
+The motivation is as follows: suppose we observe two particles and keep track of their trajectory, as seen in Figure \@ref(fig:fig1).
+
+```{r, include=FALSE,warning=FALSE,message=FALSE}
+library(plotly)
+library(widgetframe)
+set.seed(3)
+```
+
+```{r fig1,echo=FALSE,tidy=TRUE,warning=FALSE,message=FALSE, fig.cap="Two (simulated) trajectories of particles undergoing what seems to be classical Brownian motion (diffusion)."}
+
+N = 10000;
+dt = .001;
+D=1;
+
+xi1 = rnorm(N);
+xi2= rnorm(N);
+xi3= rnorm(N);
+
+
+xx = cumsum(xi1*sqrt(2*D*dt))
+yy = cumsum(xi2*sqrt(2*D*dt))
+tvals = 0:(N-1)*dt;
+
+
+
+tau=2;
+sigma=1;
+
+Yvals = array(N);
+Yvals[1]=0;
+
+for (j in 2:N){
+  Yvals[j]= Yvals[j-1] - dt*Yvals[j-1]/tau + sigma*sqrt(dt)*xi3[j];
+}
+
+Dvals = Yvals^2;
+
+xxx = cumsum(xi1*sqrt(2*Dvals*dt))
+yyy = cumsum(xi2*sqrt(2*Dvals*dt))
+
+p1 <- plot_ly(x=xx, y=yy,type = 'scatter', mode = 'lines',line=list(color='#16B1B5',width=0.7),name='particle 1', hoverinfo="none") %>%
+    add_trace(x=xxx,y=yyy,type = 'scatter', mode = 'lines',line=list(color='#B116AE',width=0.7),name='particle 2', hoverinfo="none")
+
+
+# add slider control to plot
+p1 <- p1 %>%
+  layout(xaxis=list(title="x",titlefont=list(size=20),zeroline=FALSE,tickfont=list(size=15)), yaxis=list(title="y",titlefont=list(size=20),zeroline=FALSE,tickfont=list(size=15)),
+         title="",
+         legend = list(x = 0.1, y = 0.9,font=list(size=20),bgcolor='rgba(0,0,0,0)')
+)%>% config(displayModeBar = F)
+
+frameWidget(p1, height=500)
+```
+Although it certainly looks like they are "diffusing", we want to characterize more precisely (statistically) the motion of these two particles.
+The standard way of doing so is *mean squared displacement (MSD)* analysis. Although "mean" could mean over many possible trajectories,
+in the context of single particle tracking, it is usually associated with a single trajectory. Call $X_i$ the $i$th observation
+of the particle, which we are assuming we observe at regular snapshots of time $\Delta t$, so $X_i$ is observed at time
+$i \Delta t$.
+
+The MSD is then, an average squared displacement over all windows (lags) of a particular size $j$,
+\begin{equation}
+\text{MSD} := \langle X^2(j) \rangle = \frac{1}{n-j}\sum_{i=1}^{n-j} \left(X_{i+j} - X_{i}\right)^2,
+(\#eq:MSD)
+\end{equation}
+where, in \@ref(eq:MSD), $n$ is our total number of observations. This quantity is nice because it distinguishes between
+a wide array of behaviors. Most notably, for classical diffusion, we have
+\begin{equation}
+\langle X^2(t) \rangle = 4Dt,
+\end{equation}
+meaning that we expect the MSD to be a line, where the slope encodes the diffusing coefficient (diffusivity). Deviations from a straight line
+are associated with *anomalous diffusion*, either subdiffusion or superdiffusion often due to interactions complex environments. Therefore, the MSD
+is the first tool in diagnosing the behavior of our particles, and can be seen in Figure \@ref(fig:fig2).
+
+
+
+```{r fig2,echo=FALSE,tidy=TRUE,warning=FALSE,message=FALSE, fig.cap="A comparison of the mean squared displacement statistic $\\langle X^2(\\tau)\\rangle$ as a function of the lag (window) size $\\tau$."}
+
+ M = 250;
+ msdvals1 = array(M);
+ msdvals2 = array(M);
+
+
+ for (i in 1:M) {
+   dix = diff(xx, lag = i)
+   diy = diff(yy,lag=i)
+   disp1 = sqrt(dix^2+diy^2)
+   msd1 = mean(disp1^2)
+
+   dixx = diff(xxx, lag = i)
+   diyy = diff(yyy,lag=i)
+   disp2 = sqrt(dixx^2+diyy^2)
+   msd2 = mean(disp2^2)
+
+   msdvals1[i] = msd1
+   msdvals2[i] = msd2
+ }
+
+p2 <- plot_ly(x=1:M,y=msdvals1,type = 'scatter', mode = 'lines',line=list(color='#16B1B5',width=12),name='particle 1', hoverinfo="none")%>%
+  add_trace(x=1:M,y=msdvals2,type = 'scatter', mode = 'lines',line=list(color='#B116AE',width=12),name='particle 2', hoverinfo="none")
+
+
+p2 <- p2 %>%
+  layout(xaxis=list(title="lag",titlefont=list(size=20),tickfont=list(size=15)), yaxis=list(title="MSD",titlefont=list(size=20),tickfont=list(size=15),showline=T),
+         title="",
+         legend = list(x = 0.1, y = 0.9,font=list(size=20),bgcolor='rgba(0,0,0,0)')
+)%>% config(displayModeBar = F)
+
+frameWidget(p2, height=500)
+```
+
+From Figure \@ref(fig:fig2), we see that the MSD curves for the two particles are not only lines, but effectively indistinguishable. Can we conclude
+they are undergoing the same, classical diffusive motion? We can go a bit further. Classical diffusion has another incredibly useful property: Gaussian behavior.
+In some time interval of size $t$, the probability of finding a particle displaced distance $x$ is the Gaussian
+\begin{equation}
+p(x,t) = \frac{1}{\sqrt{4\pi Dt}} e^{-\frac{x^2}{4Dt}}.
+(\#eq:gauss)
+\end{equation}
+We can compute this pretty easily for our data and get the following result.
+
+
+```{r, include=FALSE,warning=FALSE,message=FALSE}
+
+ disp11 = hist(abs(diff(xx, lag = 1) + diff(yy, lag = 1)))
+ disp12 = hist(abs(diff(xx, lag = 2) + diff(yy, lag = 2)))
+ disp13 = hist(abs(diff(xx, lag = 5) + diff(yy, lag = 5)))
+ disp14 = hist(abs(diff(xx, lag = 10) + diff(yy, lag = 10)))
+
+
+ disp21 = hist(abs(diff(xxx, lag = 1) + diff(yyy, lag = 1)))
+ disp22 = hist(abs(diff(xxx, lag = 2) + diff(yyy, lag = 2)))
+ disp23 = hist(abs(diff(xxx, lag = 5) + diff(yyy, lag = 5)))
+ disp24 = hist(abs(diff(xxx, lag = 10) + diff(yyy, lag = 10)))
+
+ d11m = c(-rev(disp11$mids),disp11$mids)
+ d11d = c(rev(disp11$density),disp11$density)/2
+ d12m = c(-rev(disp12$mids),disp12$mids)
+ d12d = c(rev(disp12$density),disp12$density)/2
+ d13m = c(-rev(disp13$mids),disp13$mids)
+ d13d = c(rev(disp13$density),disp13$density)/2
+ d14m = c(-rev(disp14$mids),disp14$mids)
+ d14d = c(rev(disp14$density),disp14$density)/2
+
+ d21m = c(-rev(disp21$mids),disp21$mids)
+ d21d = c(rev(disp21$density),disp21$density)/2
+ d22m = c(-rev(disp22$mids),disp22$mids)
+ d22d = c(rev(disp22$density),disp22$density)/2
+ d23m = c(-rev(disp23$mids),disp23$mids)
+ d23d = c(rev(disp23$density),disp23$density)/2
+ d24m = c(-rev(disp24$mids),disp24$mids)
+ d24d = c(rev(disp24$density),disp24$density)/2  
+```
+
+
+```{r fig3,echo=FALSE,tidy=TRUE,warning=FALSE,message=FALSE, fig.cap="Probability density $p(x,t)$ of displacements $x$ for time window $\\tau$. For classical diffusion, we expect this to be a Gaussian that widens with time. Note the $\\log$ axis.  "}
+ p3 <- plot_ly(x=d11m, y=d11d,type = 'scatter',legendgroup = 'group1', mode = 'lines',line=list(color='#16B1B5',width=10,shape='spline',smoothing=1.3),name='particle 1, t=1', hoverinfo="none") %>%
+   add_trace(x=d12m, y=d12d,type = 'scatter', legendgroup = 'group1',mode = 'lines',line=list(color='#16B1B5',width=7,shape='spline',smoothing=1.3),name='t=2',legendgroup = 'group1', hoverinfo="none") %>%
+   add_trace(x=d13m, y=d13d,type = 'scatter',legendgroup = 'group1', mode = 'lines',line=list(color='#16B1B5',width=3,shape='spline',smoothing=1.3),name='t=10', hoverinfo="none") %>%
+   add_trace(x=d14m, y=d14d,type = 'scatter',legendgroup = 'group1', mode = 'lines',line=list(color='#16B1B5',width=1,shape='spline',smoothing=1.3),name='t=50', hoverinfo="none") %>%
+  add_trace(x=d21m, y=d21d,type = 'scatter', mode = 'lines',line=list(color='#B116AE',width=10),name='particle 2, t=1',legendgroup = 'group2', hoverinfo="none") %>%
+  add_trace(x=d22m, y=d22d,type = 'scatter', legendgroup = 'group2',mode = 'lines',line=list(color='#B116AE',width=7,shape='spline',smoothing=1.3),name='t=2',legendgroup = 'group2', hoverinfo="none") %>%
+  add_trace(x=d23m, y=d23d,type = 'scatter', legendgroup = 'group2',mode = 'lines',line=list(color='#B116AE',width=3,shape='spline',smoothing=1.3),name='t=10', legendgroup = 'group2',hoverinfo="none") %>%
+  add_trace(x=d24m, y=d24d,type = 'scatter', legendgroup = 'group2',mode = 'lines',line=list(color='#B116AE',width=1,shape='spline',smoothing=1.3),name='t=50', hoverinfo="none")
+
+p3 <- p3 %>%
+  layout(xaxis=list(zeroline=F,showline=T,range=c(-0.6,.6),title="x",titlefont=list(size=20),tickfont=list(size=15)), yaxis=list(range=c(-1.75, 1.25),type="log",title="p(x,t)",titlefont=list(size=20),tickfont=list(size=15),showline=T),
+         title="",
+         legend = list(x = 0.8, y = 1,font=list(size=18),bgcolor='rgba(0,0,0,0)')
+)%>% config(displayModeBar = F)
+
+frameWidget(p3, height=500)
+```
+
+In Figure \@ref(fig:fig3), we finally see a clear difference between our two particles.  Particle 1 (in green) seems to follow what we expect by \@ref(eq:gauss): a Gaussian
+that spreads out with longer times $t$. However, particle 2 seems to be doing something completely different. Note that \@ref(fig:fig3) is on a log scale,
+and that the tails (large $x$) values decay linearly, which translates to an *exponential tail*, or one that scales
+$p(x) \sim |x|^{\beta}$ for large $x$.  
+
+We've stumbled into an interesting question: what *is* particle 2 doing? It looks like classical diffusion in some ways (linear MSD),
+but distinctly different in others (non-Gaussian displacement). While I motivated this with simulated data, there is precedence for investigation from experiments.
+
+```{r wangfigs, fig.cap='Experimentally observed^[B. Wang et al., PNAS (2009) <a href="http://www.pnas.org/content/106/36/15160.abstract"><i class="fa fa-external-link fa-1x"></i></a>] anomalous, yet diffusive behavior. Beads on lipid bilayer tubes and entangled in actin webs are both bound to have linear MSDs and non-Gaussian displacements.', echo=FALSE, fig.align='center', out.width='80%'}
+knitr::include_graphics('/~miles/img/diff-diff/wangfigs.png')
+```
+
+In Figure \@ref(fig:wangfigs), we see the first experimental evidence motivating this. In this paper,
+the authors find two experimental setups, both involving beads interacting with cytoskeletal filaments which produced
+linear MSDs, but exponential tails for displacement. They do note that the exponential tails existed only for small times,
+but nonetheless, there is a clear deviation from classical diffusion.
+
+# Diffusing diffusivities
+
+From the motivation, it should be somewhat intuitive that we want to come up with a model that produces both
+i) a linear MSD, ii) non-Gaussian displacements. In the past few years, a number of papers have addressed this.
+
+```{r diffpapers, fig.cap='Some recent papers^[A. V. Chechkin et al., Phys. Rev. X  (2017) <a href="https://journals.aps.org/prx/abstract/10.1103/PhysRevX.7.021002"><i class="fa fa-external-link fa-1x"></i></a><br> M.V. Chubynsky and G.W. Slater, Phys. Rev. Lett. (2014) <a href="https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.113.098302"><i class="fa fa-external-link fa-1x"></i></a><br> Y. Lanoiselée, D. S. Grebenkov, arXiv:<span style="font-family:Roboto Mono;">1711.09588</span> <a href="https://arxiv.org/abs/1711.09588"><i class="fa fa-external-link fa-1x"></i></a>] with mathematical formalism on the diffusing diffusivity hypothesis.', echo=FALSE, fig.align='center', out.width='80%'}
+knitr::include_graphics('/~miles/img/diff-diff/diffdiffpapers.png')
+```
+
+A few different interpretations and models have emerged, as seen in Figure \@ref(fig:diffpapers). I will summarize the broad idea, although the details vary a bit from paper-to-paper.
+The main observation is that some sort of memory (correlation) for the system is needed, but where it exists is subtle. For instance subdiffusion is a classical model
+of diffusion with memory, but is not what we want, as it produces non-linear MSD curves. These authors identify that the correlation needs to be in the
+step *distance*, rather than the step *direction*.  That is, if we call
+$$
+\Delta X_i := X_i - X_{i-1}
+$$
+then,
+\begin{equation}
+\langle \Delta X_i \Delta X_j \rangle = 0, \quad \text{but} \quad \langle\Delta X_i^2 \Delta X_j^2 \rangle \neq \langle \Delta X_i^2\rangle \langle \Delta X_j^2\rangle.
+(\#eq:corr)
+\end{equation}
+That is, \@ref(eq:corr) encodes that the directions of steps are uncorrelated, but the magnitudes are not. The justification for this is that in a complex environment,
+particles change their diffusivity slowly by encountering different "parts" of the environment, meaning that there is a memory to the diffusivity itself.
+We could then assume that there is some probability distribution of diffusivities, denoted $\pi(D)$, meaning we can
+average the displacements over all possible values of $D$ to obtain $p(x,t)$:
+\begin{equation}
+p(x,t) = \int_{0}^{\infty} \pi(D) \frac{1}{\sqrt{4\pi D t}} e^{-\frac{x^2}{4Dt}}.
+(\#eq:pxt)
+\end{equation}
+One possibility is that the distribution of diffusivities is exponential,
+\begin{equation}
+\pi(D) = \frac{1}{\langle D \rangle} e^{-D/\langle D \rangle},
+(\#eq:pid)
+\end{equation}
+in which case, \@ref(eq:pxt) becomes the Laplace distribution
+\begin{equation}
+p(x,t) = \frac{1}{\sqrt{4\langle D \rangle t}} e^{-\frac{|x|}{\sqrt{\langle D \rangle t}}}.
+(\#eq:laplace)
+\end{equation}
+\@ref(eq:laplace) does indeed have the feature of exponential tails that we are hoping for, but this is for all $t$, even though, experimentally, we see
+convergence to Gaussian behavior for large $t$.
+
+To resolve this, we can put *dynamics* on the diffusivity, $D$, with the following set of stochastic differential equations
+\begin{align}
+\dot{X}(t) &= \sqrt{2D(t)} \, \xi(t)\\
+D(t) &= Y^2(t)\\
+\dot{Y}(t)&=-\frac{1}{\tau} Y + \sigma \eta(t),
+(\#eq:diffdiff)
+\end{align}
+where $\eta, \xi$ are independent white-noise processes. This says that $Y(t)$ undergoes an Ornstein-Uhlenbeck process and the magnitude of $Y(t)$ dictates the diffusivity $D(t)$.
+At long times, the statinary density of $D$ is exactly of the form \@ref(eq:pid) with $\langle D \rangle = \sigma^2 \tau$. In fact, \@ref(eq:diffdiff) is exactly what I simulated to obtain
+particle 2 in Figure \@ref(fig:fig1) so that $\langle D \rangle$ was equal to the constant $D$ of particle 1.
+
+One interesting feature of \@ref(eq:diffdiff) is worth pointing out right away. While we think of the particle $X(t) \in \mathbb{R}^d$ diffusing in $d=2,3$ dimensions,
+this formulation does *not* require that $Y(t)$ be evolving in the same number of dimensions. The authors provide commentary on this, but ultimately it seems to remain elusive.
+What would it mean for the diffusivity to evolve in a higher or lower dimension than the particle itself?
+
+It's also worth pointing out that \@ref(eq:diffdiff) has actually been considered before in another context: finance. This process is closely related to the Cox-Ingersoll-Ross (CIR) model describing the evolution of interest rates.
+
+
+# Stochastic subordination
+
+Studying \@ref(eq:diffdiff) further requires a cute mathematical trick called stochastic subordination. Effectively, this is a change of variables on time, where the evolution of the new time
+is random (and not necessarily monotonically increasing).
+
+We can rewrite our system in Fokker-Planck form for the probability density $\tilde{p}(x,t)$ conditioned on some realization of $D(t)$, so
+\begin{equation}
+\tilde{p}(x,t) = p\left(x,t | D(t)\right)
+\end{equation}
+which just provides the standard diffusion equation
+\begin{equation}
+\partial_t \tilde{p}(x,t) = D(t) \nabla^2 \tilde{p}(x,t).
+(\#eq:FPE)
+\end{equation}
+With this in mind, we now think of the change of variables
+\begin{equation}
+\frac{\mathrm{d}}{\mathrm{d}\tau} x(\tau) = \sqrt{2} \xi(t), \qquad \frac{\mathrm{d}}{\mathrm{d}t} \tau(t) = D(t).
+(\#eq:subord)
+\end{equation}
+The change of variables \@ref(eq:subord) is convenient because we now can write the solution to \@ref(eq:FPE) as
+\begin{equation}
+\tilde{p}(x,\tau) = \frac{1}{\sqrt{4\pi \tau}} e^{-\frac{x^2}{4\tau}},
+(\#eq:pxtau)
+\end{equation}
+where $\tau$ in \@ref(eq:pxtau) must be interpreted as a random quantity, but, is known from \@ref(eq:subord) and \@ref(eq:diffdiff)
+to be the stochastic integral
+\begin{equation}
+\tau(t) = \int_0^t D(s) \, \mathrm{d} s = \int_0^t Y^2(s) \, \mathrm{d} s.
+(\#eq:tau)
+\end{equation}
+Let $T(\tau,t)$ be the probability density of $\tau$ which evolves by \@ref(eq:tau), then the true displacement can be found by integrating over all possibilities of $\tau$
+\begin{equation}
+p(x,t) = \int_0^\infty T(\tau,t) \tilde{p}(x,\tau) \, \mathrm{d} \tau.
+(\#eq:Pxt)
+\end{equation}
+I will leave the details out here, but we did all this work because the Fourier transform of $p(x,t)$, described by the integral \@ref(eq:Pxt) can be computed explicitly, which is somewhat surprising.
+
+One nice way to quantify deviations from Gaussian-ness is the kurtosis, defined to be
+\begin{equation}
+K := \frac{\langle x^4(t)\rangle}{\langle x^2(t)\rangle^2}.
+\end{equation}
+Recall that a 1D Gaussian has kurtosis $K=3$, and values larger than $K=3$ measure how not-Gaussian a distribution is. By solving \@ref(eq:Pxt) using the Fourier transform, the authors find
+\begin{equation}
+K \sim \begin{cases} 9 & \text{for small }t \\
+3 & \text{for large }t, \end{cases}
+(\#eq:K)
+\end{equation}
+where I have written the results for 1D, but the results find this formula for any dimension. The kurtosis result \@ref(eq:K) has the exact
+behavior observed experimentally: large deviations from Gaussian displacement (large $K$) for small $t$, but close to Gaussian behavior ($K \approx 3$) for large $t$.
+
+# Testing the hypothesis
+
+While the diffusing-diffusivity model seems to indeed match experiments quite well, it isn't wildly mechanistic in its description. Therefore, we should be curious: can we make predictions from (or "verify")  this very coarsed grained model?
+
+```{r testfig, fig.cap='Experimental setup^[M. Matse et al., Phys. Rev. E  (2017) <a href="https://journals.aps.org/pre/abstract/10.1103/PhysRevE.96.042604"><i class="fa fa-external-link fa-1x"></i></a> ] attempting to validate the diffusing diffusivity hypothesis.', echo=FALSE, fig.align='center', out.width='80%'}
+knitr::include_graphics('/~miles/img/diff-diff/testfig.png')
+```
+
+In Figure \@ref(fig:testfig), the authors seek to answer this question. The whole idea behind this setup is to allow the particle to diffuse in an environment where the changes in $D$ are explicitly *known*. To manifest this, the authors create an apparatus to observe the motion of a bead diffusing near a wall. The wall influences the diffusion in the perpendicular direction, but not horizontal, meaning these two components can be decomposed and compared. From both theoretical and experimental setups, it is well established that the diffusivity decreases with the distance $z$ to the surface due to hydrodynamic effects, and is given by
+\begin{equation}
+D_\perp \sim D_0 \left(\frac{6z^2+2az}{6z^2+9az+2a^2} \right),
+\end{equation}
+where $D_0$ is the diffusivity with no confinement and $a$ is the particle radius. Although diffusion in the direction parallel to the wall is seen to be affected, it fluctuates much less than in the perpendicular direction. Moreover, at interactions of this scale, both gravity and electrostatic forces must be accounted for as well, which we will just bake in to some potential $U(z)$. With this known, we can write down (a discretized) SDE that tells us the change in the height $z$:
+\begin{equation}
+\Delta z \approx \left \{\partial_z D_\perp(z) - D_\perp(z)U'(z)/k_B T \right\}\Delta t + \sqrt{2D_\perp(z)}\xi,
+\end{equation}
+where $\xi$ is just a white noise term, the first $D_\perp$ term is due to diffusive drift, and the second accounts for the gravitational and electrostatic forces.
+
+Ultimately, from their test, they conclude that if samples are taken faster than some critical time interval, so $\Delta t < \Delta t_c$, then fluctuations in the diffusivity $D$ dominate, and the predictions made by the diffusivity diffusivity hypothesis are seen: the displacements are non-Gaussian, yet the MSD grows linearly. However, over longer times $\Delta t > \Delta t_c$, the potential (describing the gravitational and electrostatic forces) dominate, and the fluctuations in $D$ get washed out. Therefore, these experiments provide evidence that at least in certain scenarios, the diffusing diffusivity explanation does indeed explain the observed statistics. 
+
+# Conclusion
+
+The idea that particles in complex media don't behave the way classical stochastic processes predict is a modern research paradigm, of which this issue of non-Gaussian diffusion is central. These mathematical approaches elegantly pin down *coarse grained* descriptions of possible behaviors that match experiments nicely. These theories are further strengthened by the predictions confirmed with the near-wall experiments. However, I'm still a little dissatisfied with the state of this question and think a lot of work will be done in this direction in the future. For one, there really are no mechanisms of how the environment would dictate $D(t)$. Of course, this is easier said than done for a *complex* environment, but until then: these are just models that broadly *summarize* the motion, rather than precisely describe it. Moreover, I suspect that these subtleties exist because of how we are measuring motion. The MSD is a classical tool that has been applied to a wide variety of problems, but ultimately, is problematic for this very reason: many processes produce the same MSD curve. I am curious about whether more advanced single particle statistics approaches (say, fancy Bayesian stuff) will make this research somewhat obsolete by doing a better job distinguishing different motions by assessing fundamentally different statistics.

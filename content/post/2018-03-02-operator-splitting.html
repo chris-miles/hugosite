@@ -1,0 +1,239 @@
+---
+title: 'Operator splitting'
+author: Chris Miles
+date: '2018-03-02' #'2018-03-06'
+slug: operator-splitting
+categories:
+  - math
+tags:
+  - differential equations
+  - PDEs
+  - ODEs
+  - numerics
+summary: "I'll discuss the use of operator splitting as the basis for numerically solving ODEs or PDEs with some concrete examples. Along the way, we'll stumble into a lot of linear algebra and a teensy bit of Lie theory."
+---
+
+<script src="/~miles/rmarkdown-libs/htmlwidgets/htmlwidgets.js"></script>
+<script src="/~miles/rmarkdown-libs/pymjs/pym.v1.js"></script>
+<script src="/~miles/rmarkdown-libs/widgetframe-binding/widgetframe.js"></script>
+
+
+<p>I stumbled across the recent paper <a href="https://arxiv.org/abs/1710.02232">“Efficient Reactive Brownian Dynamics”</a>, which proposes a reaction-diffusion scheme based on a technique called Strang splitting. While I was vaguely familiar with the notion of splitting, I wanted to write up this post to think out some of the details I hadn’t previously.</p>
+<p>The reaction-diffusion scheme is a perfect context to understand splitting because there are effectively two (coupled, but distinct) dynamics going on: diffusion and reactions. This will be the generic setup we’ll consider in this post. Suppose we have some quantity <span class="math inline">\(u(t)\)</span> that evolves by the differential equation
+<span class="math display" id="eq:full">\[\begin{equation}
+\frac{\partial u}{\partial t} = L_1(u) + L_2(u),\tag{1}
+\end{equation}\]</span>
+where <span class="math inline">\(L_1,L_2\)</span> are two operators. While we’ll consider some specific choices of these operators, I’ll mention now that we’re not limited to just ODEs for this. That is, <span class="math inline">\(u\)</span> could be a function of <span class="math inline">\(x\)</span>, and <span class="math inline">\(L_i\)</span> could be an differential operator in <span class="math inline">\(x\)</span>, giving us a PDE for <span class="math inline">\(u(x,t)\)</span>.</p>
+<p>The whole idea is then: we want to somehow solve the two problems separately. That is, we want to split <a href="#eq:full">(1)</a> into the subproblems
+<span class="math display" id="eq:L1L2">\[\begin{equation}
+\begin{cases}
+\frac{\partial u_1}{\partial t} &amp;= L_1 (u_1)\\
+\frac{\partial u_2}{\partial t} &amp;= L_2 (u_2)
+\end{cases}\tag{2}
+\end{equation}\]</span>
+Say we were able to solve the system <a href="#eq:L1L2">(2)</a>, how do we combine <span class="math inline">\(u_1\)</span> and <span class="math inline">\(u_2\)</span> to construct the solution <span class="math inline">\(u(t)\)</span> to the full system <a href="#eq:full">(1)</a>?</p>
+<div id="linearity-matrix-exponentials" class="section level2">
+<h2>Linearity, Matrix exponentials</h2>
+<p>Suppose that <span class="math inline">\(L_1, L_2\)</span> are both <strong>linear</strong> operators, and <span class="math inline">\(u(t)\)</span> does not depend on space, so <span class="math inline">\(L_1, L_2\)</span> are just matrices. The solution to <a href="#eq:full">(1)</a> can be constructed by the matrix exponential
+<span class="math display">\[\begin{equation}
+    u(t) = e^{(L_1+L_2)t}u(0).
+\end{equation}\]</span>
+Using the same technique, we know the solutions to <a href="#eq:L1L2">(2)</a> are
+<span class="math display">\[\begin{equation}
+    u_1(t) = e^{L_1 t}u_1(0), \qquad u_2(t) e^{L_2 t} u_2(0).
+\end{equation}\]</span>
+Because we’re cooking up <span class="math inline">\(u_1,u_2\)</span> we can choose initial conditions on <span class="math inline">\(u_1, u_2\)</span> however we’d like. Say, we take <span class="math inline">\(u_1(0)u_2(0)=u(0)\)</span>. Is this enough to make the answer obvious?
+If we then consider
+<span class="math display">\[\begin{equation}
+    u_*(t) := u_1(t)u_2(t) = e^{L_1 t} u_1(0) e^{L_2 t} u_2(0) = e^{L_1 t} e^{L_2 t} u(0),
+\end{equation}\]</span>
+does this give us the solution to our original problem? <strong>No!</strong></p>
+<p>Unfortunately, the properties of <em>matrix</em> exponentials tell us that (in general)
+<span class="math display" id="eq:AB">\[\begin{equation}
+    e^{A+B} \neq e^{A}e^{B},\tag{3}
+\end{equation}\]</span>
+and therefore
+<span class="math display" id="eq:AB">\[\begin{equation}
+    e^{L_1 t} e^{L_2 t} \neq  e^{(L_1+L_2)t}.
+\end{equation}\]</span></p>
+</div>
+<div id="commutators-bch-formula" class="section level2">
+<h2>Commutators, BCH formula</h2>
+<p>Is \tag{3} ever true? That is, can we ever naively combine matrix exponentials? It turns out, the answer to this is <em>yes</em>, if <span class="math inline">\(A,B\)</span> commute. That is
+<span class="math display">\[\begin{equation}
+    AB = BA \qquad \leftrightarrow \qquad e^{A}e^{B} = e^{A+B}.
+\end{equation}\]</span>
+We’ll look at concrete examples later, but it turns out that this is pretty rare. Is all hope lost? Is there any way to recover an approximation for <span class="math inline">\(u(t)\)</span> from this technique?</p>
+<p>The answer (somewhat surprisingly) comes from Lie theory, in the form of the Baker-Campell-Hausdorff (BCH) formula. To state the formula, first I must mention the <strong>commutator</strong> of two matrices <span class="math inline">\(A,B\)</span>, defined by
+<span class="math display">\[\begin{equation}
+    [A,B] := AB - BA.
+\end{equation}\]</span>
+Note that if <span class="math inline">\(A,B\)</span> commute, <span class="math inline">\([A,B] = 0\)</span>. With this, we can state the classical result.</p>
+<div id="baker-campell-hausdorff-formula" class="section level3">
+<h3>Baker-Campell-Hausdorff formula</h3>
+<p>Consider the matrices <span class="math inline">\(A,B,C\)</span> such that
+<span class="math display">\[\begin{equation}
+e^{A}e^{B} = e^{C}
+\end{equation}\]</span>
+then <span class="math inline">\(C\)</span> can be computed by the series
+<span class="math display">\[\begin{equation}
+    C = A +B  + \frac{1}{2} [A,B] + \frac{1}{12}[A,[A,B]]+ \cdots.
+\end{equation}\]</span>
+The usefulness of this is hopefully apparent: even though our linear operators may not commute, we can take progressive terms of this series to get an approximation for the full solution to our system.</p>
+</div>
+</div>
+<div id="splitting-techniques-errors" class="section level2">
+<h2>Splitting techniques, errors</h2>
+<p>We’ve discussed already the possibility of some approximations, but I just wanted to associate the names used in the literature with the explicit expressions used.</p>
+<p>The most naive approximation, but also the simplest is</p>
+<div id="first-order-splitting" class="section level3">
+<h3>First order splitting</h3>
+<span class="math display">\[\begin{equation}
+    e^{t(L_1+L_2)} \approx e^{tL_1} e^{tL_2}.
+\end{equation}\]</span>
+<p>We know from the BCH formula that if <span class="math inline">\(L_1,L_2\)</span> commute, this is an <em>exact</em> technique. However, the BCH formula also provides the next approximation</p>
+</div>
+<div id="second-order-strang-splitting" class="section level3">
+<h3>Second order (Strang) splitting</h3>
+<span class="math display">\[\begin{equation}
+    e^{t(L_1+L_2)} \approx e^{\frac{1}{2} tL_1} e^{tL_2} e^{\frac{1}{2}t L_1}.
+\end{equation}\]</span>
+<p>This approximation was popularized by <a href="https://en.wikipedia.org/wiki/Gilbert_Strang">Gil Strang</a> and associated with his name. The perhaps more useful description of second order comes from the observation that the BCH formula actually provides error estimates
+<span class="math display" id="eq:strang">\[\begin{equation}
+    e^{t(L_1+L_2)} - e^{\frac{1}{2} tL_1} e^{tL_2} e^{\frac{1}{2}t L_1} \sim \mathcal{O}(h^3), \tag{4}
+\end{equation}\]</span>
+which describes the <em>local error</em> introduced by the approximation, and therefore the global error
+<span class="math display">\[\begin{equation}
+    \text{global error} = \text{(# of steps)} \times \text{(error at each step)} \sim \frac{1}{h} \times h^3 \sim \mathcal{O}(h^2),
+\end{equation}\]</span>
+hence the name <em>second order splitting</em>.</p>
+</div>
+</div>
+<div id="examples" class="section level2">
+<h2>Examples</h2>
+<div id="advection-diffusion" class="section level3">
+<h3>Advection-Diffusion</h3>
+<p>In this section, I’ll discuss a few examples, most of which are taken from <a href="https://ocw.mit.edu/courses/mathematics/18-336-numerical-methods-for-partial-differential-equations-spring-2009/lecture-notes/MIT18_336S09_lec20.pdf">these lecture notes</a>.</p>
+<p>Consider the classical advection-diffusion equation
+<span class="math display" id="eq:advec-diff">\[\begin{equation}
+    \partial_t u = -v u_x + Du_{xx}.\tag{5}
+\end{equation}\]</span>
+Here, we have two clear parts, so take
+<span class="math display">\[\begin{equation}
+    L_1 u := -v u_x, \qquad L_2 u := Du_{xx}.
+\end{equation}\]</span>
+What happens when we apply splitting to this problem? Let’s use the BCH formula to see how these operators interact:
+<span class="math display">\[\begin{equation}
+    L_1 L_2 u = -v(D u_{xx})_{x} = D (-v u_{x})_{xx} = L_2 L_1 u,
+\end{equation}\]</span>
+so $[L_1,L_2] =0 $. Therefore, we know that first order splitting is <em>exact</em> in this case, meaning that
+<span class="math display" id="eq:advec-sol">\[\begin{equation}
+    u(x,t) = e^{(L_1+L_2)t} u(0) = e^{tL_1} e^{tL_2} u_0(x). 
+    \tag{6}
+\end{equation}\]</span>
+If we unpack <a href="#eq:advec-sol">(6)</a> a bit, we’ll find that it provides a surprisingly intuitive result. Consider the two rightmost terms: <span class="math inline">\(\exp{(t L_2)} u(0)\)</span>. We know <span class="math inline">\(L_2\)</span> is just the pure diffusion operator, so the exponential is the solution operator (generator of the semi-group, if those words mean anything) for the heat/diffusion equation equation applied to some initial condition. Consequently,
+<span class="math display">\[\begin{equation}
+e^{tL_2} u_0(x) = u^\star(x,t) \quad \leftrightarrow \quad \partial_ tu^\star = D \partial_{xx} u^\star, \,\, u^\star(x,0) = u_0(x).
+\end{equation}\]</span>
+Now, we must apply the <span class="math inline">\(L_1\)</span> exponential, but this is simply the solution operator for the pure advection equation applied to an initial condition, which we know produces a traveling wave solution. Consequently, we immediately have
+<span class="math display">\[\begin{equation}
+e^{tL_1} u^\star(x,t) = u^\star(x-vt,t). 
+\end{equation}\]</span>
+While this solution can easily be obtained by a Fourier transform, the splitting technique breaks down each operator’s contribution to the full solution to <a href="#eq:advec-diff">(5)</a>, in (what I think are) intuitive parts.</p>
+</div>
+<div id="reaction-diffusion" class="section level3">
+<h3>Reaction-Diffusion</h3>
+<p>In the last example, we saw that <em>sometimes</em> operators commute and work out nicely, however this is usually not the case. I started this post by suggesting that reaction-diffusion is a natural place for splitting to arise, so let’s consider the simplest scenario of such. Consider the PDE
+<span class="math display">\[\begin{equation}
+\partial_t u = D \partial_{xx} u + (a-b u),
+\end{equation}\]</span>
+and call <span class="math inline">\(L_1\)</span> the diffusive part and <span class="math inline">\(L_2\)</span> the reaction (just decay in this case). We can easily check that these do not commute by comparing
+<span class="math display">\[\begin{equation}
+    L_1 L_2 u = -bDu_{xx} \qquad \neq \qquad L_2 L_1 u = a-bD_{uxx},
+\end{equation}\]</span>
+meaning this is a case where first order splitting is  exact, but we’ve established a few appropriate approximations.</p>
+<p>Here, I’ll show a brief (crude) implementation of Strang splitting in R, using Crank-Nicolson for the diffusion part and forward Euler for the reaction term.<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a></p>
+<p>We first just establish some preliminary constants for the simulation</p>
+<pre class="r"><code>dt = .001; # step size in time
+dx = .05; # step size in space
+T = 1; # max time
+
+D = 1; # diff coefficient
+b = .6; # decay rate
+a = 1.0; # birth rate
+L = 1; # length of domain
+
+Nt = round(T/dt) # number of time stpes
+Nx = round(L/dx) # number of spatial points
+x = seq(0, L, length.out=Nx+1)    # Mesh points in space
+uvals = matrix(nrow=(Nx+1),ncol=(Nt+1)) # matrix of solutions
+
+uvals[,1] = sin(pi*x/L) # just some nice initial condition that satisfies BCs</code></pre>
+<pre class="r"><code>## reaction term  f(u) = a-bu
+f &lt;- function(u, x,t){
+ return (a-b*u)
+}</code></pre>
+<p>From there, we just need to specify how we’ll numerically solve each of the components. For the reaction, we just simply take an Euler step</p>
+<pre class="r"><code># forward euler, u_{i+1} = u_i + dt*f(u_i)
+rxn_step = function(u,dt){ 
+  return (u + dt*f(u))
+}</code></pre>
+<p>For the diffusion term, things get a little more complicated, but ultimately we’re just going to use <a href="https://en.wikipedia.org/wiki/Crank%E2%80%93Nicolson_method">Crank-Nicolson</a>, implemented (probably poorly) below</p>
+<pre class="r"><code># Construct tridiagonal matrix
+tridiag &lt;- function(upper, lower, main){
+    out &lt;- matrix(0,length(main),length(main))
+    diag(out) &lt;- main
+    indx &lt;- seq.int(length(upper))
+    out[cbind(indx+1,indx)] &lt;- lower
+    out[cbind(indx,indx+1)] &lt;- upper
+    return(out)
+} 
+
+# Crank Nicolson, NOT including rxns because of splitting
+diffusion_step = function(u,dt){
+    mu = 0.5*D*dt/(dx^2); # 0.5*CFL number
+    diagonal = rep(1+2*mu, Nx+1)
+    lower = rep(-mu,Nx)
+    upper = rep(-mu,Nx)
+    
+    # BCs
+    diagonal[1] = 1;
+    upper[1] = 0;
+    diagonal[Nx+1] = 1;
+    lower[Nx] = 0;
+    A&lt;- tridiag(upper,lower,diagonal)    
+    bb = numeric(Nx+1);
+    bb[2:(Nx)] = u[2:(Nx)]+mu*(u[1:(Nx-1)] - 2*u[2:(Nx)] + u[3:(Nx+1)]);
+    usol &lt;- solve(A,bb)
+    return(usol)
+}</code></pre>
+<p>Now, we use the Strang splitting described by <a href="#eq:strang">(4)</a>, which says at each step: take <span class="math inline">\(0.5 \Delta t\)</span> of a reaction step, followed by <span class="math inline">\(\Delta t\)</span> of a diffusion step, and then finally <span class="math inline">\(0.5\Delta t\)</span> of a reaction step.</p>
+<pre class="r"><code>for (i in 1:Nt){
+    uold_split = uvals[,i];
+    uuu_split = rxn_step(uold_split,dt/2);
+    uu_split = diffusion_step(uuu_split,dt);
+    u_split = rxn_step(uu_split,dt/2);
+    uvals[,i+1] = u_split;
+}</code></pre>
+<p>Now we’ve constructed our solution, we see we get a nice plot.
+<div id="htmlwidget-1" style="width:100%;height:450px;" class="widgetframe html-widget"></div>
+<script type="application/json" data-for="htmlwidget-1">{"x":{"url":"/~miles/post/2018-03-02-operator-splitting_files/figure-html//widgets/widget_unnamed-chunk-7.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+A lot of improvements can be made to this code, but hopefully this conveys the barebones idea.</p>
+</div>
+</div>
+<div id="loose-ends" class="section level2">
+<h2>Loose ends</h2>
+<p>This post really covers only the broad strokes of splitting. We haven’t addressed some very natural questions, such as:</p>
+<ol style="list-style-type: decimal">
+<li><em>if each of the split subproblems is numerically stable, is the full problem?</em></li>
+<li><em>how do we split so that steady-state solutions are preserved?</em></li>
+<li><em>how do we extend this to stochastic equations?</em></li>
+</ol>
+<p>A great discussion (and huge resource for this post) can be found in <a href="http://www.math.ucla.edu/~wotaoyin/splittingbook/ch3-macnamara-strang.pdf">this book chapter</a> co-authored by Gil Strang himself. A nice discussion of a Python implementation of Strang splitting can be found <a href="https://hplgit.github.io/fdm-book/doc/pub/book/sphinx/._book018.html">here</a>.</p>
+</div>
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn1"><p>these choices are a little dumb, as the Euler stepping limits the error to first order, but I just want to show how easy it is to implement splitting<a href="#fnref1" class="footnote-back">↩</a></p></li>
+</ol>
+</div>

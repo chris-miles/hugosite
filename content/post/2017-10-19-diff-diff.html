@@ -1,0 +1,229 @@
+---
+title: 'Diffusing diffusivities, stochastic subordination'
+author: Chris Miles
+date: '2017-12-06' #'2018-03-06'
+slug: diff-diff
+categories:
+  - math
+  - physics
+tags:
+  - stochastics
+  - probability
+  - diffusion
+  - Brownian motion
+  - subordination
+summary: "In this post, I'll discuss some recent explanations for anomalous, yet Gaussian diffusion, including diffusing diffusivities and stochastic subordination. "
+---
+
+<script src="/~miles/rmarkdown-libs/htmlwidgets/htmlwidgets.js"></script>
+<script src="/~miles/rmarkdown-libs/pymjs/pym.v1.js"></script>
+<script src="/~miles/rmarkdown-libs/widgetframe-binding/widgetframe.js"></script>
+
+
+<p>In this post, I’ll discuss an idea emerging in the statistical physics community
+that attempts to resolve some unexplained observations of motion of single particles.<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a></p>
+<div id="anomalous-yet-brownian" class="section level1">
+<h1>Anomalous yet Brownian</h1>
+<p>The motivation is as follows: suppose we observe two particles and keep track of their trajectory, as seen in Figure <a href="#fig:fig1">1</a>.</p>
+<div class="figure"><span id="fig:fig1"></span>
+<div id="htmlwidget-1" style="width:100%;height:500px;" class="widgetframe html-widget"></div>
+<script type="application/json" data-for="htmlwidget-1">{"x":{"url":"/~miles/post/2017-10-19-diff-diff_files/figure-html//widgets/widget_fig1.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+<p class="caption">
+Figure 1: Two (simulated) trajectories of particles undergoing what seems to be classical Brownian motion (diffusion).
+</p>
+</div>
+<p>Although it certainly looks like they are “diffusing”, we want to characterize more precisely (statistically) the motion of these two particles.
+The standard way of doing so is <em>mean squared displacement (MSD)</em> analysis. Although “mean” could mean over many possible trajectories,
+in the context of single particle tracking, it is usually associated with a single trajectory. Call <span class="math inline">\(X_i\)</span> the <span class="math inline">\(i\)</span>th observation
+of the particle, which we are assuming we observe at regular snapshots of time <span class="math inline">\(\Delta t\)</span>, so <span class="math inline">\(X_i\)</span> is observed at time
+<span class="math inline">\(i \Delta t\)</span>.</p>
+<p>The MSD is then, an average squared displacement over all windows (lags) of a particular size <span class="math inline">\(j\)</span>,
+<span class="math display" id="eq:MSD">\[\begin{equation}
+\text{MSD} := \langle X^2(j) \rangle = \frac{1}{n-j}\sum_{i=1}^{n-j} \left(X_{i+j} - X_{i}\right)^2,
+\tag{1}
+\end{equation}\]</span>
+where, in <a href="#eq:MSD">(1)</a>, <span class="math inline">\(n\)</span> is our total number of observations. This quantity is nice because it distinguishes between
+a wide array of behaviors. Most notably, for classical diffusion, we have
+<span class="math display">\[\begin{equation}
+\langle X^2(t) \rangle = 4Dt,
+\end{equation}\]</span>
+meaning that we expect the MSD to be a line, where the slope encodes the diffusing coefficient (diffusivity). Deviations from a straight line
+are associated with <em>anomalous diffusion</em>, either subdiffusion or superdiffusion often due to interactions complex environments. Therefore, the MSD
+is the first tool in diagnosing the behavior of our particles, and can be seen in Figure <a href="#fig:fig2">2</a>.</p>
+<div class="figure"><span id="fig:fig2"></span>
+<div id="htmlwidget-2" style="width:100%;height:500px;" class="widgetframe html-widget"></div>
+<script type="application/json" data-for="htmlwidget-2">{"x":{"url":"/~miles/post/2017-10-19-diff-diff_files/figure-html//widgets/widget_fig2.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+<p class="caption">
+Figure 2: A comparison of the mean squared displacement statistic <span class="math inline">\(\langle X^2(\tau)\rangle\)</span> as a function of the lag (window) size <span class="math inline">\(\tau\)</span>.
+</p>
+</div>
+<p>From Figure <a href="#fig:fig2">2</a>, we see that the MSD curves for the two particles are not only lines, but effectively indistinguishable. Can we conclude
+they are undergoing the same, classical diffusive motion? We can go a bit further. Classical diffusion has another incredibly useful property: Gaussian behavior.
+In some time interval of size <span class="math inline">\(t\)</span>, the probability of finding a particle displaced distance <span class="math inline">\(x\)</span> is the Gaussian
+<span class="math display" id="eq:gauss">\[\begin{equation}
+p(x,t) = \frac{1}{\sqrt{4\pi Dt}} e^{-\frac{x^2}{4Dt}}.
+\tag{2}
+\end{equation}\]</span>
+We can compute this pretty easily for our data and get the following result.</p>
+<div class="figure"><span id="fig:fig3"></span>
+<div id="htmlwidget-3" style="width:100%;height:500px;" class="widgetframe html-widget"></div>
+<script type="application/json" data-for="htmlwidget-3">{"x":{"url":"/~miles/post/2017-10-19-diff-diff_files/figure-html//widgets/widget_fig3.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+<p class="caption">
+Figure 3: Probability density <span class="math inline">\(p(x,t)\)</span> of displacements <span class="math inline">\(x\)</span> for time window <span class="math inline">\(\tau\)</span>. For classical diffusion, we expect this to be a Gaussian that widens with time. Note the <span class="math inline">\(\log\)</span> axis.
+</p>
+</div>
+<p>In Figure <a href="#fig:fig3">3</a>, we finally see a clear difference between our two particles. Particle 1 (in green) seems to follow what we expect by <a href="#eq:gauss">(2)</a>: a Gaussian
+that spreads out with longer times <span class="math inline">\(t\)</span>. However, particle 2 seems to be doing something completely different. Note that <a href="#fig:fig3">3</a> is on a log scale,
+and that the tails (large <span class="math inline">\(x\)</span>) values decay linearly, which translates to an <em>exponential tail</em>, or one that scales
+<span class="math inline">\(p(x) \sim |x|^{\beta}\)</span> for large <span class="math inline">\(x\)</span>.</p>
+<p>We’ve stumbled into an interesting question: what <em>is</em> particle 2 doing? It looks like classical diffusion in some ways (linear MSD),
+but distinctly different in others (non-Gaussian displacement). While I motivated this with simulated data, there is precedence for investigation from experiments.</p>
+<div class="figure" style="text-align: center"><span id="fig:wangfigs"></span>
+<img src="/~miles/img/diff-diff/wangfigs.png" alt="Experimentally observed^[B. Wang et al., PNAS (2009) &lt;a href=&quot;http://www.pnas.org/content/106/36/15160.abstract&quot;&gt;&lt;i class=&quot;fa fa-external-link fa-1x&quot;&gt;&lt;/i&gt;&lt;/a&gt;] anomalous, yet diffusive behavior. Beads on lipid bilayer tubes and entangled in actin webs are both bound to have linear MSDs and non-Gaussian displacements." width="80%" />
+<p class="caption">
+Figure 4: Experimentally observed<a href="#fn2" class="footnote-ref" id="fnref2"><sup>2</sup></a> anomalous, yet diffusive behavior. Beads on lipid bilayer tubes and entangled in actin webs are both bound to have linear MSDs and non-Gaussian displacements.
+</p>
+</div>
+<p>In Figure <a href="#fig:wangfigs">4</a>, we see the first experimental evidence motivating this. In this paper,
+the authors find two experimental setups, both involving beads interacting with cytoskeletal filaments which produced
+linear MSDs, but exponential tails for displacement. They do note that the exponential tails existed only for small times,
+but nonetheless, there is a clear deviation from classical diffusion.</p>
+</div>
+<div id="diffusing-diffusivities" class="section level1">
+<h1>Diffusing diffusivities</h1>
+<p>From the motivation, it should be somewhat intuitive that we want to come up with a model that produces both
+i) a linear MSD, ii) non-Gaussian displacements. In the past few years, a number of papers have addressed this.</p>
+<div class="figure" style="text-align: center"><span id="fig:diffpapers"></span>
+<img src="/~miles/img/diff-diff/diffdiffpapers.png" alt="Some recent papers^[A. V. Chechkin et al., Phys. Rev. X  (2017) &lt;a href=&quot;https://journals.aps.org/prx/abstract/10.1103/PhysRevX.7.021002&quot;&gt;&lt;i class=&quot;fa fa-external-link fa-1x&quot;&gt;&lt;/i&gt;&lt;/a&gt;&lt;br&gt; M.V. Chubynsky and G.W. Slater, Phys. Rev. Lett. (2014) &lt;a href=&quot;https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.113.098302&quot;&gt;&lt;i class=&quot;fa fa-external-link fa-1x&quot;&gt;&lt;/i&gt;&lt;/a&gt;&lt;br&gt; Y. Lanoiselée, D. S. Grebenkov, arXiv:&lt;span style=&quot;font-family:Roboto Mono;&quot;&gt;1711.09588&lt;/span&gt; &lt;a href=&quot;https://arxiv.org/abs/1711.09588&quot;&gt;&lt;i class=&quot;fa fa-external-link fa-1x&quot;&gt;&lt;/i&gt;&lt;/a&gt;] with mathematical formalism on the diffusing diffusivity hypothesis." width="80%" />
+<p class="caption">
+Figure 5: Some recent papers<a href="#fn3" class="footnote-ref" id="fnref3"><sup>3</sup></a> with mathematical formalism on the diffusing diffusivity hypothesis.
+</p>
+</div>
+<p>A few different interpretations and models have emerged, as seen in Figure <a href="#fig:diffpapers">5</a>. I will summarize the broad idea, although the details vary a bit from paper-to-paper.
+The main observation is that some sort of memory (correlation) for the system is needed, but where it exists is subtle. For instance subdiffusion is a classical model
+of diffusion with memory, but is not what we want, as it produces non-linear MSD curves. These authors identify that the correlation needs to be in the
+step <em>distance</em>, rather than the step <em>direction</em>. That is, if we call
+<span class="math display">\[
+\Delta X_i := X_i - X_{i-1}
+\]</span>
+then,
+<span class="math display" id="eq:corr">\[\begin{equation}
+\langle \Delta X_i \Delta X_j \rangle = 0, \quad \text{but} \quad \langle\Delta X_i^2 \Delta X_j^2 \rangle \neq \langle \Delta X_i^2\rangle \langle \Delta X_j^2\rangle.
+\tag{3}
+\end{equation}\]</span>
+That is, <a href="#eq:corr">(3)</a> encodes that the directions of steps are uncorrelated, but the magnitudes are not. The justification for this is that in a complex environment,
+particles change their diffusivity slowly by encountering different “parts” of the environment, meaning that there is a memory to the diffusivity itself.
+We could then assume that there is some probability distribution of diffusivities, denoted <span class="math inline">\(\pi(D)\)</span>, meaning we can
+average the displacements over all possible values of <span class="math inline">\(D\)</span> to obtain <span class="math inline">\(p(x,t)\)</span>:
+<span class="math display" id="eq:pxt">\[\begin{equation}
+p(x,t) = \int_{0}^{\infty} \pi(D) \frac{1}{\sqrt{4\pi D t}} e^{-\frac{x^2}{4Dt}}.
+\tag{4}
+\end{equation}\]</span>
+One possibility is that the distribution of diffusivities is exponential,
+<span class="math display" id="eq:pid">\[\begin{equation}
+\pi(D) = \frac{1}{\langle D \rangle} e^{-D/\langle D \rangle},
+\tag{5}
+\end{equation}\]</span>
+in which case, <a href="#eq:pxt">(4)</a> becomes the Laplace distribution
+<span class="math display" id="eq:laplace">\[\begin{equation}
+p(x,t) = \frac{1}{\sqrt{4\langle D \rangle t}} e^{-\frac{|x|}{\sqrt{\langle D \rangle t}}}.
+\tag{6}
+\end{equation}\]</span>
+<a href="#eq:laplace">(6)</a> does indeed have the feature of exponential tails that we are hoping for, but this is for all <span class="math inline">\(t\)</span>, even though, experimentally, we see
+convergence to Gaussian behavior for large <span class="math inline">\(t\)</span>.</p>
+<p>To resolve this, we can put <em>dynamics</em> on the diffusivity, <span class="math inline">\(D\)</span>, with the following set of stochastic differential equations
+<span class="math display" id="eq:diffdiff">\[\begin{align}
+\dot{X}(t) &amp;= \sqrt{2D(t)} \, \xi(t)\\
+D(t) &amp;= Y^2(t)\\
+\dot{Y}(t)&amp;=-\frac{1}{\tau} Y + \sigma \eta(t),
+\tag{7}
+\end{align}\]</span>
+where <span class="math inline">\(\eta, \xi\)</span> are independent white-noise processes. This says that <span class="math inline">\(Y(t)\)</span> undergoes an Ornstein-Uhlenbeck process and the magnitude of <span class="math inline">\(Y(t)\)</span> dictates the diffusivity <span class="math inline">\(D(t)\)</span>.
+At long times, the statinary density of <span class="math inline">\(D\)</span> is exactly of the form <a href="#eq:pid">(5)</a> with <span class="math inline">\(\langle D \rangle = \sigma^2 \tau\)</span>. In fact, <a href="#eq:diffdiff">(7)</a> is exactly what I simulated to obtain
+particle 2 in Figure <a href="#fig:fig1">1</a> so that <span class="math inline">\(\langle D \rangle\)</span> was equal to the constant <span class="math inline">\(D\)</span> of particle 1.</p>
+<p>One interesting feature of <a href="#eq:diffdiff">(7)</a> is worth pointing out right away. While we think of the particle <span class="math inline">\(X(t) \in \mathbb{R}^d\)</span> diffusing in <span class="math inline">\(d=2,3\)</span> dimensions,
+this formulation does <em>not</em> require that <span class="math inline">\(Y(t)\)</span> be evolving in the same number of dimensions. The authors provide commentary on this, but ultimately it seems to remain elusive.
+What would it mean for the diffusivity to evolve in a higher or lower dimension than the particle itself?</p>
+<p>It’s also worth pointing out that <a href="#eq:diffdiff">(7)</a> has actually been considered before in another context: finance. This process is closely related to the Cox-Ingersoll-Ross (CIR) model describing the evolution of interest rates.</p>
+</div>
+<div id="stochastic-subordination" class="section level1">
+<h1>Stochastic subordination</h1>
+<p>Studying <a href="#eq:diffdiff">(7)</a> further requires a cute mathematical trick called stochastic subordination. Effectively, this is a change of variables on time, where the evolution of the new time
+is random (and not necessarily monotonically increasing).</p>
+<p>We can rewrite our system in Fokker-Planck form for the probability density <span class="math inline">\(\tilde{p}(x,t)\)</span> conditioned on some realization of <span class="math inline">\(D(t)\)</span>, so
+<span class="math display">\[\begin{equation}
+\tilde{p}(x,t) = p\left(x,t | D(t)\right)
+\end{equation}\]</span>
+which just provides the standard diffusion equation
+<span class="math display" id="eq:FPE">\[\begin{equation}
+\partial_t \tilde{p}(x,t) = D(t) \nabla^2 \tilde{p}(x,t).
+\tag{8}
+\end{equation}\]</span>
+With this in mind, we now think of the change of variables
+<span class="math display" id="eq:subord">\[\begin{equation}
+\frac{\mathrm{d}}{\mathrm{d}\tau} x(\tau) = \sqrt{2} \xi(t), \qquad \frac{\mathrm{d}}{\mathrm{d}t} \tau(t) = D(t).
+\tag{9}
+\end{equation}\]</span>
+The change of variables <a href="#eq:subord">(9)</a> is convenient because we now can write the solution to <a href="#eq:FPE">(8)</a> as
+<span class="math display" id="eq:pxtau">\[\begin{equation}
+\tilde{p}(x,\tau) = \frac{1}{\sqrt{4\pi \tau}} e^{-\frac{x^2}{4\tau}},
+\tag{10}
+\end{equation}\]</span>
+where <span class="math inline">\(\tau\)</span> in <a href="#eq:pxtau">(10)</a> must be interpreted as a random quantity, but, is known from <a href="#eq:subord">(9)</a> and <a href="#eq:diffdiff">(7)</a>
+to be the stochastic integral
+<span class="math display" id="eq:tau">\[\begin{equation}
+\tau(t) = \int_0^t D(s) \, \mathrm{d} s = \int_0^t Y^2(s) \, \mathrm{d} s.
+\tag{11}
+\end{equation}\]</span>
+Let <span class="math inline">\(T(\tau,t)\)</span> be the probability density of <span class="math inline">\(\tau\)</span> which evolves by <a href="#eq:tau">(11)</a>, then the true displacement can be found by integrating over all possibilities of <span class="math inline">\(\tau\)</span>
+<span class="math display" id="eq:Pxt">\[\begin{equation}
+p(x,t) = \int_0^\infty T(\tau,t) \tilde{p}(x,\tau) \, \mathrm{d} \tau.
+\tag{12}
+\end{equation}\]</span>
+I will leave the details out here, but we did all this work because the Fourier transform of <span class="math inline">\(p(x,t)\)</span>, described by the integral <a href="#eq:Pxt">(12)</a> can be computed explicitly, which is somewhat surprising.</p>
+<p>One nice way to quantify deviations from Gaussian-ness is the kurtosis, defined to be
+<span class="math display">\[\begin{equation}
+K := \frac{\langle x^4(t)\rangle}{\langle x^2(t)\rangle^2}.
+\end{equation}\]</span>
+Recall that a 1D Gaussian has kurtosis <span class="math inline">\(K=3\)</span>, and values larger than <span class="math inline">\(K=3\)</span> measure how not-Gaussian a distribution is. By solving <a href="#eq:Pxt">(12)</a> using the Fourier transform, the authors find
+<span class="math display" id="eq:K">\[\begin{equation}
+K \sim \begin{cases} 9 &amp; \text{for small }t \\
+3 &amp; \text{for large }t, \end{cases}
+\tag{13}
+\end{equation}\]</span>
+where I have written the results for 1D, but the results find this formula for any dimension. The kurtosis result <a href="#eq:K">(13)</a> has the exact
+behavior observed experimentally: large deviations from Gaussian displacement (large <span class="math inline">\(K\)</span>) for small <span class="math inline">\(t\)</span>, but close to Gaussian behavior (<span class="math inline">\(K \approx 3\)</span>) for large <span class="math inline">\(t\)</span>.</p>
+</div>
+<div id="testing-the-hypothesis" class="section level1">
+<h1>Testing the hypothesis</h1>
+<p>While the diffusing-diffusivity model seems to indeed match experiments quite well, it isn’t wildly mechanistic in its description. Therefore, we should be curious: can we make predictions from (or “verify”) this very coarsed grained model?</p>
+<div class="figure" style="text-align: center"><span id="fig:testfig"></span>
+<img src="/~miles/img/diff-diff/testfig.png" alt="Experimental setup^[M. Matse et al., Phys. Rev. E  (2017) &lt;a href=&quot;https://journals.aps.org/pre/abstract/10.1103/PhysRevE.96.042604&quot;&gt;&lt;i class=&quot;fa fa-external-link fa-1x&quot;&gt;&lt;/i&gt;&lt;/a&gt; ] attempting to validate the diffusing diffusivity hypothesis." width="80%" />
+<p class="caption">
+Figure 6: Experimental setup<a href="#fn4" class="footnote-ref" id="fnref4"><sup>4</sup></a> attempting to validate the diffusing diffusivity hypothesis.
+</p>
+</div>
+<p>In Figure <a href="#fig:testfig">6</a>, the authors seek to answer this question. The whole idea behind this setup is to allow the particle to diffuse in an environment where the changes in <span class="math inline">\(D\)</span> are explicitly <em>known</em>. To manifest this, the authors create an apparatus to observe the motion of a bead diffusing near a wall. The wall influences the diffusion in the perpendicular direction, but not horizontal, meaning these two components can be decomposed and compared. From both theoretical and experimental setups, it is well established that the diffusivity decreases with the distance <span class="math inline">\(z\)</span> to the surface due to hydrodynamic effects, and is given by
+<span class="math display">\[\begin{equation}
+D_\perp \sim D_0 \left(\frac{6z^2+2az}{6z^2+9az+2a^2} \right),
+\end{equation}\]</span>
+where <span class="math inline">\(D_0\)</span> is the diffusivity with no confinement and <span class="math inline">\(a\)</span> is the particle radius. Although diffusion in the direction parallel to the wall is seen to be affected, it fluctuates much less than in the perpendicular direction. Moreover, at interactions of this scale, both gravity and electrostatic forces must be accounted for as well, which we will just bake in to some potential <span class="math inline">\(U(z)\)</span>. With this known, we can write down (a discretized) SDE that tells us the change in the height <span class="math inline">\(z\)</span>:
+<span class="math display">\[\begin{equation}
+\Delta z \approx \left \{\partial_z D_\perp(z) - D_\perp(z)U&#39;(z)/k_B T \right\}\Delta t + \sqrt{2D_\perp(z)}\xi,
+\end{equation}\]</span>
+where <span class="math inline">\(\xi\)</span> is just a white noise term, the first <span class="math inline">\(D_\perp\)</span> term is due to diffusive drift, and the second accounts for the gravitational and electrostatic forces.</p>
+<p>Ultimately, from their test, they conclude that if samples are taken faster than some critical time interval, so <span class="math inline">\(\Delta t &lt; \Delta t_c\)</span>, then fluctuations in the diffusivity <span class="math inline">\(D\)</span> dominate, and the predictions made by the diffusivity diffusivity hypothesis are seen: the displacements are non-Gaussian, yet the MSD grows linearly. However, over longer times <span class="math inline">\(\Delta t &gt; \Delta t_c\)</span>, the potential (describing the gravitational and electrostatic forces) dominate, and the fluctuations in <span class="math inline">\(D\)</span> get washed out. Therefore, these experiments provide evidence that at least in certain scenarios, the diffusing diffusivity explanation does indeed explain the observed statistics.</p>
+</div>
+<div id="conclusion" class="section level1">
+<h1>Conclusion</h1>
+<p>The idea that particles in complex media don’t behave the way classical stochastic processes predict is a modern research paradigm, of which this issue of non-Gaussian diffusion is central. These mathematical approaches elegantly pin down <em>coarse grained</em> descriptions of possible behaviors that match experiments nicely. These theories are further strengthened by the predictions confirmed with the near-wall experiments. However, I’m still a little dissatisfied with the state of this question and think a lot of work will be done in this direction in the future. For one, there really are no mechanisms of how the environment would dictate <span class="math inline">\(D(t)\)</span>. Of course, this is easier said than done for a <em>complex</em> environment, but until then: these are just models that broadly <em>summarize</em> the motion, rather than precisely describe it. Moreover, I suspect that these subtleties exist because of how we are measuring motion. The MSD is a classical tool that has been applied to a wide variety of problems, but ultimately, is problematic for this very reason: many processes produce the same MSD curve. I am curious about whether more advanced single particle statistics approaches (say, fancy Bayesian stuff) will make this research somewhat obsolete by doing a better job distinguishing different motions by assessing fundamentally different statistics.</p>
+</div>
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn1"><p>much of the content in this post is taken from (great) slides by Mykyta Chubynsky <a href="http://chubynsky.info/pres/oth13.pdf"><i class="fa fa-file-pdf-o fa-1x"></i></a><a href="#fnref1" class="footnote-back">↩</a></p></li>
+<li id="fn2"><p>B. Wang et al., PNAS (2009) <a href="http://www.pnas.org/content/106/36/15160.abstract"><i class="fa fa-external-link fa-1x"></i></a><a href="#fnref2" class="footnote-back">↩</a></p></li>
+<li id="fn3"><p>A. V. Chechkin et al., Phys. Rev. X (2017) <a href="https://journals.aps.org/prx/abstract/10.1103/PhysRevX.7.021002"><i class="fa fa-external-link fa-1x"></i></a><br> M.V. Chubynsky and G.W. Slater, Phys. Rev. Lett. (2014) <a href="https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.113.098302"><i class="fa fa-external-link fa-1x"></i></a><br> Y. Lanoiselée, D. S. Grebenkov, arXiv:<span style="font-family:Roboto Mono;">1711.09588</span> <a href="https://arxiv.org/abs/1711.09588"><i class="fa fa-external-link fa-1x"></i></a><a href="#fnref3" class="footnote-back">↩</a></p></li>
+<li id="fn4"><p>M. Matse et al., Phys. Rev. E (2017) <a href="https://journals.aps.org/pre/abstract/10.1103/PhysRevE.96.042604"><i class="fa fa-external-link fa-1x"></i></a> <a href="#fnref4" class="footnote-back">↩</a></p></li>
+</ol>
+</div>

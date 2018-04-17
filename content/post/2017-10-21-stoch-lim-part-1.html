@@ -1,0 +1,177 @@
+---
+title: 'Stochastic limits, part 1: CLT,  Donsker’s FCLT'
+author: Chris Miles
+date: '2017-10-21' #'2018-03-06'
+slug: stoch-lim-part-1
+categories:
+  - math
+tags:
+  - stochastics
+  - probability
+  - Brownian motion
+summary: "One way to understand the structure of randomness is to experience *a lot* of it. We'll use $\\lim_{n\\to\\infty} X_1 + \\cdots + X_n$ as a case study, and along the way bump into classical ideas like the Central Limit Theorem (CLT) and Brownian motion."
+---
+
+<script src="/~miles/rmarkdown-libs/htmlwidgets/htmlwidgets.js"></script>
+<script src="/~miles/rmarkdown-libs/pymjs/pym.v1.js"></script>
+<script src="/~miles/rmarkdown-libs/widgetframe-binding/widgetframe.js"></script>
+
+
+<p>In the ever-growing list of talks I’ve suffered through, I’ve noticed a bizarre trend in many given by mathematicians considered “rockstars”: half the talk consists of rambling about old, obscure books in their field. I’m honestly not sure if this is simply because they can get away with it because they’re already famous, or because arcane tomes are a genuinely good source of information. I’m operating under the latter assumption. This post (and likely a large portion of the blog) will consist of me babbling about books I’m currently working through.</p>
+<p>The first book on the agenda is on stochastic limits, by Whitt.</p>
+<p><img width=250px src="/~miles/img/stoch-lim/wittbook.jpg" alt="Whitt's book"/></p>
+<p>This book isn’t really old (circa 2002) or obscure, but I had recently falsely hoped to use a result in it for a paper and couldn’t, so it seemed like a perfect candidate to blog about. A big theme of the book, which I love, is how do we make sense of randomness? Answer: by seeing enough of it to discern a structure. The second big point, which is a little more subtle, is that, in the long run, many underlying details don’t matter. That is, we’ll see that large families of distributions with similar properties ultimately look “the same” in some sense. In this post, I’ll go over the most standard case, which basically is when everything goes “right.” This is the setup I was most familiar with, but is necessary to establish when/how things can go wrong (which is more interesting, and will be covered in the next post).</p>
+<div id="a-game-of-chance" class="section level1">
+<h1>A game of chance</h1>
+<p>Consider a simple game, where at the <span class="math inline">\(n\)</span>th round, you receive payoff <span class="math inline">\(X_n\)</span>. Then, after <span class="math inline">\(N\)</span> rounds, the total payoff is just the sum <span class="math inline">\(S_N\)</span> defined by
+<span class="math display">\[ S_N := X_1 + X_2 + \cdots + X_N = \sum_{n=1}^{N} X_n.\]</span>
+Just like my actual casino experiences, we’re going to play this game <em>a lot</em>, maybe because we’ve already lost a ton of money playing a different game. This corresponds to taking the limit <span class="math inline">\(N\to\infty\)</span> and trying to understand the behavior of <span class="math inline">\(S_N\)</span>.</p>
+<p>We’ll first consider the most simple scenario, where the payoff you receive is uniformly distributed between <span class="math inline">\(0\)</span> and <span class="math inline">\(1\)</span>, so <span class="math inline">\(X_n \sim \text{unif}(0,1)\)</span>. We can see the results of this for different values of <span class="math inline">\(N\)</span> in Figure <a href="#fig:fig1">1</a>.</p>
+<div class="figure"><span id="fig:fig1"></span>
+<div id="htmlwidget-1" style="width:100%;height:450px;" class="widgetframe html-widget"></div>
+<script type="application/json" data-for="htmlwidget-1">{"x":{"url":"/~miles/post/2017-10-21-stoch-lim-part-1_files/figure-html//widgets/widget_fig1.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+<p class="caption">
+Figure 1: Cumulative sums <span class="math inline">\(S_n\)</span> for <span class="math inline">\(1 \leq n \leq N\)</span> with <span class="math inline">\(X_n \sim \text{unif}(0,1)\)</span>.
+</p>
+</div>
+What do we learn from this? The result isn’t terribly surprising or interesting: as <span class="math inline">\(N\)</span> gets large, then <span class="math inline">\(S_n\)</span> approaches a line with slope <span class="math inline">\(m=1/2\)</span>. Where does this <span class="math inline">\(1/2\)</span> come from? It’s simply the mean payoff at each round,
+<span class="math display">\[
+\mathbb{E}[X_i] = 1/2, \qquad X_i \sim \text{unif}(0,1).
+\]</span>
+We can make the game a little more interesting. Since we know that, on average, you win <span class="math inline">\(1/2\)</span> each round, we can make this the cost of playing. We can then look at the net winnings, described by the quantity
+<span class="math display">\[
+S_n - \frac{1}{2}n, \qquad S_n := X_1 + \cdots + X_n,
+\]</span>
+where the natural generalization of this for different games is
+<span class="math display">\[
+S_n - \mu n, \qquad \mu := \mathbb{E}[X_i].
+\]</span>
+We then plot the net payoff of the same game
+<div class="figure"><span id="fig:fig2"></span>
+<div id="htmlwidget-2" style="width:100%;height:450px;" class="widgetframe html-widget"></div>
+<script type="application/json" data-for="htmlwidget-2">{"x":{"url":"/~miles/post/2017-10-21-stoch-lim-part-1_files/figure-html//widgets/widget_fig2.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+<p class="caption">
+Figure 2: Net worth <span class="math inline">\(S_n - n\mu\)</span> for <span class="math inline">\(1 \leq n \leq N\)</span> with <span class="math inline">\(X_n \sim \text{unif}(0,1)\)</span>.
+</p>
+</div>
+<div id="central-limit-theorem" class="section level2">
+<h2>Central Limit Theorem</h2>
+<p>Because we’re looking at a collection of discrete objects here, there is a straightforward explanation for the behavior we’re seeing: the classical Central limit theorem (CLT). The statement of CLT that is probably most familiar to most is for <span class="math inline">\(X_i\)</span> with mean <span class="math inline">\(\mu\)</span> and variance <span class="math inline">\(\sigma^2\)</span> respectively,</p>
+<p>(<span class="citation">@foo2</span>)<span class="math display">\[ \label{eq:CLT}
+\lim_{N\to\infty} \sqrt{N} \left \{ \frac{1}{N} \sum_{i=1}^{N}X_i - \mu \right\} \to \mathcal{N}(0,\sigma^2),
+\]</span>
+where <span class="math inline">\(\mathcal{N}(0,\sigma^2)\)</span> is just the standard normal (Gaussian) distribution with variance <span class="math inline">\(\sigma^2\)</span>. However, if we squint at this equation, we see a remarkable similarity to what we’re studying: we just need to move the <span class="math inline">\(N\)</span> around a little. Doing so, the statement relevant to us is
+<span class="math display">\[ \lim_{N\to\infty} N^{-1/2}(S_N - \mu N) \to \mathcal{N}(0,\sigma^2).\]</span>
+In this light, the behaviors we see in Figures <a href="#fig:fig1">1</a> and <a href="#fig:fig2">2</a> aren’t terribly surprising. As we take larger and larger <span class="math inline">\(N\)</span>, the behavior we get is approximately normally distributed around zero.</p>
+<p>There is a small subtlety from the CLT: because we didn’t scale our net winnings by <span class="math inline">\(N^{-1/2}\)</span> like the CLT suggests, as we take larger <span class="math inline">\(N\)</span>, the graphs actually get more and more widely spread out. However, this isn’t the most terribly concerning feature.</p>
+<p>What <em>is</em> maybe a more important worry is: this is a statement about a discrete collection of things, but we can clearly see that in Figure <a href="#fig:fig1">1</a> and <a href="#fig:fig2">2</a>, as <span class="math inline">\(N\)</span> gets larger, the plot “looks” more like a continuous function rather than a sequence of distinct dots. However, how do we make this precise?</p>
+</div>
+</div>
+<div id="continuous-time" class="section level1">
+<h1>Continuous time</h1>
+<p><span class="math inline">\(S_n\)</span> is technically only defined at <span class="math inline">\(n=1,2,\ldots,N\)</span> so even though for large <span class="math inline">\(N\)</span> it looks like all the space is filled in, many values are undefined. What do we “fill in” these blanks? Ultimately, we want to construct some function <span class="math inline">\(S(t)\)</span>.</p>
+<p>One possibility, and the most simple, is to connect the dots with straight lines. That is, between <span class="math inline">\(n=1,2,\ldots\)</span> just take <span class="math inline">\(S(t)\)</span> to be the “most recent” value of <span class="math inline">\(S_n\)</span>. Making this more precise, we have to specify some domain for <span class="math inline">\(t\)</span>. Why not take <span class="math inline">\(t = \in [0,1]\)</span>. This also alleviates the issue seen in <a href="#fig:fig1">1</a> and <a href="#fig:fig2">2</a> that the <span class="math inline">\(x\)</span>-axis changes as we vary <span class="math inline">\(N\)</span>. Then, this idea of taking straight lines corresponds to defining <span class="math inline">\(S(t)\)</span> to be
+<span class="math display">\[
+S(t) = S_{\lfloor N t \rfloor},
+\]</span>
+where <span class="math inline">\(\lfloor \cdot\rfloor\)</span> corresponds to the floor operator. This approach seems almost too simple. What if we tried something fancier? Say, instead of making the connection between points flat, we connect them with a straight line. This is exactly the idea of <em>linear interpolation</em> with knots <span class="math inline">\((n/N, S_n)\)</span>.</p>
+<p>We’ve suggested two possible ways of “connecting the dots,” so which is better? We plot a comparison of these two in Figure <a href="#fig:fig3">3</a>.</p>
+<div class="figure"><span id="fig:fig3"></span>
+<div id="htmlwidget-3" style="width:100%;height:450px;" class="widgetframe html-widget"></div>
+<script type="application/json" data-for="htmlwidget-3">{"x":{"url":"/~miles/post/2017-10-21-stoch-lim-part-1_files/figure-html//widgets/widget_fig3.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+<p class="caption">
+Figure 3: Two ideas for making <span class="math inline">\(S_n- \mu n\)</span> a continuous function <span class="math inline">\(S(t)\)</span>: a step function (via floor operator), or linear interpolation.
+</p>
+</div>
+<p>What do we learn from Figure <a href="#fig:fig3">3</a>? It doesn’t matter how we connect the discrete values, as ultimately, as <span class="math inline">\(N\)</span> gets large, any sane way of doing so will produce the same result.</p>
+<div id="donskers-theorem" class="section level2">
+<h2>Donsker’s theorem</h2>
+<p>There are an <a href="https://math.stackexchange.com/questions/345608/different-versions-of-functional-central-limit-theorem-aka-donsker-theorem">overwhelming number</a> of different statements of the theorem I’m going to state, but all provide roughly the same result. Sometimes this is referred to as the <strong>functional central limit theorem (FCLT)</strong> because, in some sense, it’s a Central limit theorem for functions!</p>
+<p>Therefore, for concreteness, let us consider the step function version of <span class="math inline">\(S(t)\)</span> with all the bells and whistles, so
+<span class="math display">\[
+\mathbf{S}_N(t) := N^{-1/2}\left(S_{\lfloor Nt \rfloor} - \mu \lfloor N t \rfloor\right), \quad t\in[0,1].\]</span>
+Then, Donsker’s theorem states that, in some sense<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a>, and under certain conditions,
+<span class="math display" id="eq:FCLT">\[\begin{equation}
+\mathbf{S}_N(t) \rightarrow \sigma \mathbf{B}(t), \quad \text{ as } N\to\infty, \tag{1}
+\end{equation}\]</span>
+where <span class="math inline">\(\mathbf{B}(t)\)</span> is the classical <strong>Brownian motion</strong> defined by Gaussian behavior
+and independent increments.</p>
+<p>On an intuitive level, this connection makes quite a bit of sense because <span class="math inline">\(S_n\)</span> was “built” by adding independent, identically distributed things, so it makes sense that we get a continuous function with independent increments. Donsker’s theorem provides a deceptively rich amount of information. I’ll discuss a few interesting observations, consequences, and applications.</p>
+<div id="existence" class="section level3">
+<h3>Existence</h3>
+<p>Quoting the Whitt book, “the most important thing about Brownian motion is that it exists.” While I think this statement is one that clearly outs someone as a pure mathematician, it’s worth noting that the fact that this limit converges to <em>something</em> and that something is Brownian motion is worth pointing out.</p>
+</div>
+<div id="self-similarity" class="section level3">
+<h3>Self-similarity</h3>
+<p>In the graphs above, you could maybe see that is that the limiting objects looked more and more self-similar, which is a well known property of Brownian motion
+<span class="math display">\[
+\mathbf{B}(ct) = c^{-1/2}\mathbf{B}(t).
+\]</span></p>
+</div>
+<div id="functional-clt" class="section level3">
+<h3>Functional? CLT</h3>
+<!-- A lot of the usefulness of Donsker's theorem comes in knowing that this limit persists through functionals of the processes. That is, for all continuous, bounded real-valued $h$,
+$$
+\mathbb{E}[h(\mathbf{S}_N)] \to \mathbb{E}[h(\sigma \mathbf{B})].
+$$ -->
+<p>In the statement of Donsker’s theorem <a href="#eq:FCLT">(1)</a>, it’s not incredibly transparent where the “functional” part of the functional central limit theorem, but in Donsker’s original statement, which is equivalent to the aforementioned, this limit holds if if and only if
+<span class="math display">\[
+g(\mathbf{S}_N) \to g(\sigma \mathbf{B})
+\]</span>
+for <strong>every</strong> continuous real-valued function <span class="math inline">\(g\)</span>. From these origins, I think the name is a little more clear.</p>
+</div>
+<div id="invariance" class="section level3">
+<h3>Invariance</h3>
+<p>Another thing worth pointing out is that both the CLT and FCLT are <em>invariance</em> principles. That is, in the limit, the third, fourth, and so on moments of the distribution of <span class="math inline">\(X\)</span> do not matter at all. In other words, the behavior for large <span class="math inline">\(N\)</span> is <em>entirely</em> characterized by the first two moments of <span class="math inline">\(X_i,\)</span> its mean <span class="math inline">\(\mu\)</span> and variance <span class="math inline">\(\sigma^2\)</span>. That means that any distributions that have the same first two moments will be indistinguishable in the limit. This is pretty surprising, at least to me.</p>
+</div>
+<div id="an-application" class="section level3">
+<h3>An application</h3>
+<p>This application is stolen from Davar Khoshnevisan’s great set of notes<a href="#fn2" class="footnote-ref" id="fnref2"><sup>2</sup></a> on Donsker’s theorem. A lot of the usefulness of the theorem is in <strong>functionals</strong> of these processes. Basically, we can pick easy-to-study <span class="math inline">\(X_i\)</span> and study our discrete sum to discern properties about Brownian motion.</p>
+<p>Say, in our wild bout of gambling, we wanted to keep track of the proportion of time our net winnings were positive. Then, this corresponds to the quantity
+<span class="math display">\[  
+Z_N := \frac{1}{N}\sum_{i=1}^{N} \mathbb{I}_{\left\{S_i &gt; 0\right\}}, \qquad S_i = X_1 + \cdots + X_i,
+\]</span>
+where <span class="math inline">\(\mathbb{I}\)</span> is just the indicator function
+<span class="math display">\[
+\mathbb{I}_{\left\{S_i &gt; 0\right\}} = \begin{cases} 1 &amp; \text{if } S_i &gt; 0 \\
+0 &amp; \text{otherwise.}\end{cases}
+\]</span>
+Then, (with a lot of work to prove this rigorously), intuitively this should behave the same as Brownian motion, so assuming <span class="math inline">\(\mathbb{E}[X_i] =0\)</span>,
+<span class="math display">\[
+\lim_{N\to\infty} Z_N \rightarrow \int_0^1 \mathbb{I}_{\left\{\mathbf{B}(s) &gt; 0\right\}} \, \mathrm{d} s.
+\]</span>
+I’ll skip the details but, we know that this is true for <strong>any</strong> choice of <span class="math inline">\(X_i\)</span>, so we can choose a very easy one, such as a simple, symmetric (Bernoulli) random walk with
+<span class="math display">\[
+\mathbb{P}(X_i = 1) = \mathbb{P}(X_i = -1) = 1/2,
+\]</span>
+and compute <span class="math inline">\(Z_N\)</span> explicitly, and then take <span class="math inline">\(N\to\infty\)</span>, which just ends up being a combinatorial exercise. Interestingly, when you do this, you find the surprising <strong>arcsine law</strong>,
+<span class="math display">\[
+\mathbb{P}\left\{ \int_0^1 \mathbb{I}_{\left\{\mathbf{B}(s) &gt; 0\right\}} \, \mathrm{d} s \leq a\right \} = \frac{2}{\pi} \arcsin\left(\sqrt{a}\right).
+\]</span>
+So, for instance, we could ask, what’s the probability we spend at most half the time above breaking even, this corresponds to <span class="math inline">\(a=1/2\)</span> and equates to
+<span class="math display">\[
+\mathbb{P}\left\{ \int_0^1 \mathbb{I}_{\left\{\mathbf{B}(s) &gt; 0\right\}} \, \mathrm{d} s \leq \frac{1}{2}\right \} = \frac{2}{\pi} \arcsin\left(\sqrt{1/2}\right) = \frac{1}{2},
+\]</span>
+which makes some sense. We have a roughly 50-50 chance of, at best breaking even half the time.</p>
+</div>
+</div>
+</div>
+<div id="things-go-awry" class="section level1">
+<h1>Things go awry</h1>
+<p>I’ll tease at the next post I’m planning on making, which discusses what can go wrong with everything I’ve talked about so far. Finding these cases is actually pretty easy. I left some key requirements out of my statement of the classical central limit theorem: <span class="math inline">\(X_i\)</span> must <strong>independent</strong>, and have <strong>a finite mean and variance</strong>. Therefore, we can cook up <span class="math inline">\(X_i\)</span> that are non-independent, or a finite mean but infinite variance, or even worse, infinite both. Then we could ask: does this converge in any sense? And if so, what to?</p>
+In Figure <a href="#fig:fig4">4</a>, I’m plotting one of these cases. What do you notice the limit looks like? For me, the most noticeable observation are large jumps. The FCLT converged to the most classical continuous process without jumps, so our hope is that this converges to the most classical stochastic process <em>with</em> jumps, a Lévy process. This turns out to be exactly the case! Details next time.
+<div class="figure"><span id="fig:fig4"></span>
+<div id="htmlwidget-4" style="width:100%;height:450px;" class="widgetframe html-widget"></div>
+<script type="application/json" data-for="htmlwidget-4">{"x":{"url":"/~miles/post/2017-10-21-stoch-lim-part-1_files/figure-html//widgets/widget_fig4.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+<p class="caption">
+Figure 4: <span class="math inline">\(S_n\)</span> for <span class="math inline">\(1 \leq n \leq N\)</span> with <span class="math inline">\(X_n \sim \text{pareto}(0,1.05)\)</span>.
+</p>
+</div>
+</div>
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn1"><p>by this, I mean in distribution, but this is where the statements vary. See the StackExchange post if you’re interested in these technical details.<a href="#fnref1" class="footnote-back">↩</a></p></li>
+<li id="fn2"><p>found on his website <a href="https://www.math.utah.edu/~davar/ps-pdf-files/donsker.pdf"><i class="fa fa-file-pdf-o fa-1x"></i></a>.<a href="#fnref2" class="footnote-back">↩</a></p></li>
+</ol>
+</div>

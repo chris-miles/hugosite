@@ -1,0 +1,251 @@
+---
+title: 'Stochastic limits, part 2: tails, memory, and the Joseph and Noah effects'
+author: Chris Miles
+date: '2017-11-10' #'2018-03-06'
+slug: stoch-lim-part-2
+categories:
+  - math
+tags:
+  - stochastics
+  - probability
+  - Lévy processes
+  - anomalous diffusion
+summary: "In the previous post about limit theorems of stochastic processes, we considered when everything goes *right*, leading to Gaussian-like behavior. Here we'll discuss when things go *wrong*, particularly when memory effects and infinite moments are introduced."
+---
+
+<script src="/~miles/rmarkdown-libs/htmlwidgets/htmlwidgets.js"></script>
+<script src="/~miles/rmarkdown-libs/pymjs/pym.v1.js"></script>
+<script src="/~miles/rmarkdown-libs/widgetframe-binding/widgetframe.js"></script>
+
+
+<p>In the <a href="/~miles/post/stoch-lim-part-1/">last post</a>, we discussed what happens to the sum
+<span class="math display">\[\begin{equation}
+\lim_{N\to\infty} S_N - \mu N, \qquad S_N := \sum_{i=1}^{N} X_i,
+\end{equation}\]</span>
+with <span class="math inline">\(X_i\)</span> drawn from some “nice” distribution with <span class="math inline">\(\mu := \mathbb{E}[X_i]\)</span>. In this scenario, <span class="math inline">\(\mathbf{S}_N(t) \to \mathbf{B}(t)\)</span>, Brownian motion. For this discussion, we’ll have to state a little more explicitly what we mean by “nice.” The two big features we needed are</p>
+<ol style="list-style-type: decimal">
+<li>finite (first two) moments, i.e. <span class="math inline">\(\mathbb{E}[X], \mathbb{V}[X] &lt; \infty\)</span>,</li>
+<li>independence, i.e. <span class="math inline">\(\mathbb{P}(X_i = x_i, X_j = x_j) = \mathbb{P}(X_i = x_i)\mathbb{P}(X_j = x_j)\)</span>.</li>
+</ol>
+<p>With these in mind, it’s somewhat intuitive the limiting object is Brownian: a process with Gaussian, independent increments. However, we can now ask, what if we break one (or all) of these assumptions? Should we expect <em>any</em> limiting object? If one does exist, should we expect independent increments if we’re building an object out of non-independent things?</p>
+<div id="simulations" class="section level2">
+<h2>Simulations</h2>
+<p>As with most mathematical questions, I think a sane first step is to do some caveman simulations. To do these, a little bit of insight is necessary. What is a particular distribution with infinite moments? A great case-study for use here is the <em>Pareto distribution</em>, characterized by its probability density function
+<span class="math display">\[\begin{equation}
+f_X(x)= \begin{cases} \frac{\alpha x_\mathrm{m}^\alpha}{x^{\alpha+1}} &amp; x \ge x_\mathrm{m}, \\ 0 &amp; x &lt; x_\mathrm{m}, \end{cases} 
+\end{equation}\]</span>
+where <span class="math inline">\(x_m &gt;0\)</span> is some scale parameter and <span class="math inline">\(\alpha&gt;0\)</span> is some shape parameter. Weirdly, sampling from this distribution isn’t built into the vanilla R distribution, but we can easily define some commands that give us the standard R functionality for a distribution.</p>
+<pre class="r"><code>dpareto &lt;- function(x, xm, alpha) ifelse(x &gt; xm , alpha*xm**alpha/(x**(alpha+1)), 0)
+ppareto &lt;- function(q, xm, alpha) ifelse(q &gt; xm , 1 - (xm/q)**alpha, 0 )
+qpareto &lt;- function(p, xm, alpha) ifelse(p &lt; 0 | p &gt; 1, NaN, xm*(1-p)**(-1/alpha))
+rpareto &lt;- function(n, xm, alpha) qpareto(runif(n), xm, alpha)</code></pre>
+<p>Here, we’ll just take <span class="math inline">\(x_m=1\)</span> for convenience. The fact that makes the Pareto distribution relevant are its first two moments, first the mean
+<span class="math display">\[\begin{equation}
+\mathbb{E}[X] = \begin{cases} \infty &amp; \alpha \leq 1 \\ \frac{\alpha}{\alpha-1} &amp; \alpha  &gt; 1, \end{cases}
+\end{equation}\]</span>
+and variance
+<span class="math display">\[\begin{equation}
+\mathbb{V}[X] = \begin{cases} \infty &amp; \alpha \leq 2 \\ \frac{\alpha}{(\alpha-1)^2(\alpha-1)} &amp; \alpha  &gt; 2. \end{cases}
+\end{equation}\]</span>
+Therefore, we have three scenarios of interest:</p>
+<ol style="list-style-type: decimal">
+<li>If <span class="math inline">\(\alpha \in (0,1]\)</span>, then <span class="math inline">\(\mathbb{E}[X] = \infty\)</span> and <span class="math inline">\(\mathbb{V}[X] = \infty\)</span>,</li>
+<li>if <span class="math inline">\(\alpha \in (1,2]\)</span>, then <span class="math inline">\(\mathbb{E}[X] = \infty\)</span> but <span class="math inline">\(\mathbb{V}[X]\)</span> is finite,</li>
+<li>if <span class="math inline">\(\alpha \in (2,\infty]\)</span>, both <span class="math inline">\(\mathbb{E}[X]\)</span> and <span class="math inline">\(\mathbb{V}[X]\)</span> are finite.</li>
+</ol>
+<p>With this in mind, we can easily simulate <span class="math inline">\(S_N\)</span> where <span class="math inline">\(X_i\)</span> is drawn from these three regimes.</p>
+<div id="infinite-first-two-moments" class="section level3">
+<h3>Infinite first two moments</h3>
+<div class="figure"><span id="fig:fig3"></span>
+<div id="htmlwidget-1" style="width:100%;height:350px;" class="widgetframe html-widget"></div>
+<script type="application/json" data-for="htmlwidget-1">{"x":{"url":"/~miles/post/2017-11-08-stoch-lim-part2_files/figure-html//widgets/widget_fig3.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+<p class="caption">
+Figure 1: <span class="math inline">\(S_n\)</span> for <span class="math inline">\(1 \leq n \leq N\)</span> with <span class="math inline">\(X_n \sim \text{pareto}(0,0.25)\)</span>.
+</p>
+</div>
+</div>
+<div id="finite-mean-infinite-variance" class="section level3">
+<h3>Finite mean, infinite variance</h3>
+<div class="figure"><span id="fig:fig4"></span>
+<div id="htmlwidget-2" style="width:100%;height:350px;" class="widgetframe html-widget"></div>
+<script type="application/json" data-for="htmlwidget-2">{"x":{"url":"/~miles/post/2017-11-08-stoch-lim-part2_files/figure-html//widgets/widget_fig4.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+<p class="caption">
+Figure 2: <span class="math inline">\(S_n\)</span> for <span class="math inline">\(1 \leq n \leq N\)</span> with <span class="math inline">\(X_n \sim \text{pareto}(0,1.1)\)</span>.
+</p>
+</div>
+</div>
+<div id="finite-mean-and-variance" class="section level3">
+<h3>Finite mean and variance</h3>
+<div class="figure"><span id="fig:fig5"></span>
+<div id="htmlwidget-3" style="width:100%;height:350px;" class="widgetframe html-widget"></div>
+<script type="application/json" data-for="htmlwidget-3">{"x":{"url":"/~miles/post/2017-11-08-stoch-lim-part2_files/figure-html//widgets/widget_fig5.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+<p class="caption">
+Figure 3: <span class="math inline">\(S_n\)</span> for <span class="math inline">\(1 \leq n \leq N\)</span> with <span class="math inline">\(X_n \sim \text{pareto}(0,2.5)\)</span>.
+</p>
+</div>
+<p>From this, we gain a bit of intuition. In the case where
+both moments are infinite (Figure <a href="#fig:fig3">1</a>) that the
+process is in some sense <em>unstable</em>, in that huge, fairly common jumps continue to cause
+the process to blow up. In Figure <a href="#fig:fig4">2</a>, if we make the mean finite,
+things get a little more predictable: jumps still occur but the magnitude is not
+huge previous to previous values. Finally, in Figure <a href="#fig:fig5">3</a>, with two
+finite moments, things smooth out and we get back the scenario discussed in the last post.</p>
+</div>
+</div>
+<div id="relaxing-independence" class="section level2">
+<h2>Relaxing independence</h2>
+<p>How do we simulate a process where each payoff is non-independent? A classical model for this is the autoregressive moving-average (ARMA)
+process, described by the relation
+<span class="math display" id="eq:ARMA">\[\begin{equation}
+X_k := (1-\gamma)X_{k-1} + \gamma U_k,
+\tag{1}
+\end{equation}\]</span>
+where <span class="math inline">\(U_k \sim \text{unif}[0,1]\)</span>. Note that this process does indeed have memory, as the value of <span class="math inline">\(X_k\)</span> is determined
+by the previous value, <span class="math inline">\(X_{k-1}\)</span>. However, we can still define <span class="math inline">\(S_N := \sum_{i=1}^{N} X_i\)</span> and ask, what is the behavior as <span class="math inline">\(N\to\infty\)</span>?
+It was nice to subtract the mean behavior off (which we just saw isn’t always possible), but here, it actually is, by noting that
+taking expectations of <a href="#eq:ARMA">(1)</a>, which yields
+<span class="math display">\[\begin{equation}
+\mathbb{E}[X] = (1-\gamma)\mathbb{E}[X] + \gamma \mathbb{E}[U],
+\end{equation}\]</span>
+which yields
+<span class="math display">\[\begin{equation}
+\mu = \mathbb{E}[X] = \mathbb{E}[U] = \frac{1}{2}.
+\end{equation}\]</span>
+We can simulate this and subtract off the mean to see what the large <span class="math inline">\(N\)</span> behavior increments.</p>
+<div class="figure"><span id="fig:fig6"></span>
+<div id="htmlwidget-4" style="width:100%;height:350px;" class="widgetframe html-widget"></div>
+<script type="application/json" data-for="htmlwidget-4">{"x":{"url":"/~miles/post/2017-11-08-stoch-lim-part2_files/figure-html//widgets/widget_fig6.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+<p class="caption">
+Figure 4: Net worth <span class="math inline">\(S_n - n\mu\)</span> for <span class="math inline">\(1 \leq n \leq N\)</span> for <span class="math inline">\(X_n\)</span> generated by an ARMA process with <span class="math inline">\(\gamma=1/2\)</span>.
+</p>
+</div>
+<p>In Figure <a href="#fig:fig6">4</a>, we see a familiar looking limiting object: Brownian motion. This tells us that perhaps, independence is not
+a strict requirement for a FCLT? If it is not, to what extent can we break this assumption?</p>
+</div>
+<div id="biblical-analogies" class="section level1">
+<h1>Biblical analogies</h1>
+<p>Here, we simulated when things go “wrong,” with the classical central limit theorems and it turns out, these ideas have
+(archaic) names that referencing the Bible.</p>
+<div id="noah-effect" class="section level2">
+<h2>Noah effect</h2>
+<div class="figure" style="text-align: center"><span id="fig:noah"></span>
+<img src="/~miles/img/stoch-lim/noah.jpg" alt="Noah on his ark surviving a statistically rare flood." width="80%" />
+<p class="caption">
+Figure 5: Noah on his ark surviving a statistically rare flood.
+</p>
+</div>
+<p>When we broke the finiteness of our samples, we got monumental jumps. This is what is referred to as a <strong>heavy-tailed</strong> behavior. That is, large values of <span class="math inline">\(X_i\)</span> (which exist in the tail of the distribution)
+have a significant enough probability that they occasionally occur. This is sometimes referred to as the <strong>Noah effect</strong>, referencing the
+catstrophic flood encountered, for which Noah built his ark. In that context, the flood was unlike one ever seen before,
+which is exactly the case with events stemming from heavy-tails. While they may be rare enough that one of that magnitude may not have been previously seen,
+this rarity is offset by the extreme magnitude, and these events have a role in the long term behavior.</p>
+</div>
+<div id="joseph-effect" class="section level2">
+<h2>Joseph effect</h2>
+<div class="figure" style="text-align: center"><span id="fig:sevencows"></span>
+<img src="/~miles/img/stoch-lim/seven-cows.jpg" alt="Joseph received seven years of prosper and then seven years of famine." width="70%" />
+<p class="caption">
+Figure 6: Joseph received seven years of prosper and then seven years of famine.
+</p>
+</div>
+<p>When we removed the assumption of independence of our samples, events became <strong>correlated</strong>, as in,
+the system gained a memory. This memory may manifest as perioids of persisting with the same behavior: say, if <span class="math inline">\(X_i\)</span> is positive, maybe <span class="math inline">\(X_{i+1}\)</span> is more likely to
+also be positive. This lends itself to the story of Joseph in the bible. In a prophecy,
+Joseph sees that seven years of abundance will be followed by seven years of famine.
+That is, the behavior is persistent, or more technically, autocorrelated, which is sometimes called the <strong>Joseph effect</strong>. I’ve also heard this referred to as the “Netflix binge effect,”
+where once you watch an episode, there is a higher probability of continuing than just watching just a single episode.</p>
+</div>
+</div>
+<div id="summarized-theory" class="section level1">
+<h1>Summarized theory</h1>
+<div id="self-similarity-tails" class="section level2">
+<h2>Self-similarity &amp; tails</h2>
+<p>One way to understand the limiting behavior is to characterize the self-similarity of the resulting
+process. A process <span class="math inline">\(Z(t)\)</span> is said to be self-similar if there exists an <span class="math inline">\(H&gt;0\)</span> such that
+<span class="math display">\[\begin{equation}
+Z(at) = a^H Z(t),
+\end{equation}\]</span>
+where <span class="math inline">\(H\)</span> is known as the <strong>Hurst parameter</strong>. Notice that Brownian motion is self-similar with <span class="math inline">\(H=1/2\)</span>. Both the Joseph and
+Noah effects result in growth that is in some sense greater than classical Brownian motion. This manfiests as
+<span class="math inline">\(H&gt;1/2\)</span>, for different underlying reasons. <span class="math inline">\(H&lt;1/2\)</span> actually represents a negative time self-similarity, which may
+occur from say, thinking of <span class="math inline">\(Z(t)\)</span> as a model of arrivals to a doctors office with scheduling to avoid conflicts.</p>
+<p>To distinguish between these effects, we also want to characterize the tail behavior, or the existence of abnormally large events.
+One way to do so is by a parameter <span class="math inline">\(\alpha\)</span>, corresponding to the relation
+<span class="math display">\[\begin{equation}
+\mathbb{P}(|X| &gt; t)  \sim C t^{-\alpha}, \qquad \text{ as } t \to \infty.
+\end{equation}\]</span>
+That is, <span class="math inline">\(\alpha\)</span> effectively measures how quickly the tail of the distribution decays. For <span class="math inline">\(\alpha\)</span> larger, the tail decays faster, killing off
+the possibility of statistically rare large events. For a process with independent increments, it can be shown that <span class="math inline">\(H=\alpha^{-1}\)</span>.
+For Brownian motion, we actually know the exact value of these, which is <span class="math inline">\(H=\alpha^{-1}=1/2\)</span>. For the Noah effect,
+we have independent increments, but the self-similarity and tails are larger than that of classical Brownian motion, so we an characterize
+the Noah effect precisely when <span class="math inline">\(H=\alpha^{-1} &gt; 1/2\)</span>. The Joseph effect alone is when we don’t have long tails, but the self-similarity (or persistence)
+of our process is distinct, so this precisely translates to <span class="math inline">\(H &gt; \alpha^{-1}=1/2\)</span>. We could even fathom an ultimately bad scenario with
+<em>both</em> the Noah and Joseph effects, which would manifest as <span class="math inline">\(H &gt; \alpha^{-1} &gt; 1/2\)</span>.</p>
+</div>
+<div id="convergence-to-a-levy-process" class="section level2">
+<h2>Convergence to a Lévy process</h2>
+<p>The rigorous requirements for convergence are too long and annoying to include here, but hopefully unsurprisingly they relate to <span class="math inline">\(H\)</span> and <span class="math inline">\(\alpha\)</span>. Again, we can consider
+making our sum some functional by “connecting the dots,”
+<span class="math display" id="eq:Sndef">\[\begin{equation}
+\mathbf{S}_N(t) := c_N^{-1/2}\left(S_{\lfloor Nt \rfloor} - \mu \lfloor N t \rfloor\right), \quad t\in[0,1].
+\tag{2}
+\end{equation}\]</span>
+Then, under some technical conditions
+<span class="math display" id="eq:FCLTS">\[\begin{equation}
+\mathbf{S}_N(t) \rightarrow \sigma \mathbf{S}(t), \quad \text{ as } N\to\infty, \tag{3}
+\end{equation}\]</span>
+where <span class="math inline">\(\mathbf{S}(t)\)</span> is a standard <span class="math inline">\((\alpha,\beta)\)</span>-stable Lévy motion, distributed by
+<span class="math display" id="eq:Sdist">\[\begin{equation}
+\mathbf{S}(t) \sim t^{1/\alpha} S_\alpha (1,\beta,0) = S_\alpha(t^{1/\alpha}, \beta,0).  \tag{4}
+\end{equation}\]</span>
+Right away, in <a href="#eq:Sdist">(4)</a>, we see that a self-similarity appears, characterized by <span class="math inline">\(\alpha\)</span>. When <span class="math inline">\(\alpha=2\)</span>, the stable Lévy is simply Brownian motion.
+However, when <span class="math inline">\(\alpha &lt;2\)</span>, this can be thought of as a <em>jump process</em>, which looks a lot like Brownian motion just with
+non-zero mean increments. For <span class="math inline">\(0 &lt; \alpha &lt; 1\)</span>, paths grow at a reasonable rate, whereas <span class="math inline">\(1 &lt; \alpha &lt;2\)</span>, jumps become unbounded in variance. For <span class="math inline">\(\alpha &gt; 2\)</span>, the motion
+is no longer stable and blows up in finite time.
+Hence, we can immediately see this characterizes the different scenarios of the Pareto distribution.</p>
+</div>
+<div id="convergence-to-fractional-brownian-motion-fbm" class="section level2">
+<h2>Convergence to Fractional Brownian Motion (FBM)</h2>
+<p>We need a way to generally characterize the non-independence of <span class="math inline">\(X_i\)</span>, which we can do supposing that it has the representation
+<span class="math display" id="eq:lin1">\[\begin{equation}
+X_i = \sum_{j=0}^{\infty} a_j Y_{i-j}, \qquad Y_j \sim \mathcal{N}(0,1). 
+\tag{5}
+\end{equation}\]</span>
+Then, suppose the weights satisfy
+<span class="math display" id="eq:lin2">\[\begin{equation}
+\sum_{j=0}^{\infty} a_j &lt; \infty. 
+\tag{6}
+\end{equation}\]</span></p>
+<p>Then, if <a href="#eq:lin1">(5)</a> and <a href="#eq:lin2">(6)</a> are satisfied, then it can be shown that <span class="math inline">\(\mathbb{V}[X_n] &lt; \infty\)</span>.
+In this case, yet again define <span class="math inline">\(\mathbf{S}_N\)</span> as in <a href="#eq:Sndef">(2)</a>, and suppose that <span class="math inline">\(\mathbb{V}[S_n]\sim n^{2H}\)</span>. Then, we can state the FCLT for this case as
+Then, under some technical conditions
+<span class="math display" id="eq:FCLTfrac">\[\begin{equation}
+\mathbf{S}_N(t) \rightarrow \sigma \mathbf{Z}_H(t), \quad \text{ as } N\to\infty, \tag{7}
+\end{equation}\]</span>
+where <span class="math inline">\(\mathbf{Z}_H(t)\)</span> is fractional Brownian motion, which still is a Gaussian process, but with covariance structure
+<span class="math display">\[\begin{equation}
+\text{covar}[\mathbf{Z}_H(t), \mathbf{Z}_H(\tau)] = \frac{1}{2}[t^{2H} + \tau^{2H} - (t-\tau)^{2H}].
+\end{equation}\]</span>
+Recall that if <span class="math inline">\(H=1/2\)</span> as with Brownian motion, the two different times <span class="math inline">\(t,\tau\)</span> are uncorrelated. However, for any other value of <span class="math inline">\(H\)</span>, the
+times are correlated, meaning that there is either positive persistence (things stay the same) or negatively correlated
+(things are likely to change). This is, in essence, the Joseph effect.</p>
+<div id="heavy-tails-plus-dependence" class="section level3">
+<h3>Heavy tails plus dependence</h3>
+<p>There has been a significant body of work showing that even when you combine these two effects, you still (surprisingly) can get a limiting process. I’ll omit the details here but briefly mention that
+depending on the conditions, you get a pretty exotic fractional Lévy process.</p>
+</div>
+</div>
+</div>
+<div id="conclusion" class="section level1">
+<h1>Conclusion</h1>
+<p>The landscape of stochastic processes can be very daunting. However, limiting behavior provides
+a concrete and beautiful way of categorizing their behavior. The most classical case deals with when everything goes <em>right</em>. Suppose we take the nicest samples possible: independent, finite samples and use these as our building blocks.
+This is the realm of the ever-powerful Central Limit Theorem (CLT). Beyond this, we were able to articulate Donsker’s theorem, or the Functional Central Limit Theorem (FCLT),
+which provides convergence to Brownian motion and provides the Gaussian structure of the classical CLT.</p>
+<p>Deviations from the assumptions of independence and finite moments lead us to two other classical stochastic processes, each of which embodies the
+aspect of these assumptions we “break.” If we remove the requirement that the moments of our increments are finite, this leads
+to large jumps, and the limiting behavior is the classical jump process, a <em>Lévy motion</em>. If we remove independence, this inherently
+adds a memory effect to our system, and we get out the classical model of a process with correlations, <em>fractional Brownian motion</em>.
+For me, these processes have counterintuitive, esoteric descriptions, but when we “build” them from scratch by specifying their increments, I think their behavior
+is far more digestable.</p>
+</div>

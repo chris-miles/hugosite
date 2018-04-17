@@ -1,0 +1,1173 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Chris Miles on Chris Miles</title>
+    <link>http://www.math.utah.edu/~miles/</link>
+    <description>Recent content in Chris Miles on Chris Miles</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Wed, 20 Apr 2016 00:00:00 +0000</lastBuildDate>
+    <atom:link href="/~miles/" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>Operator splitting</title>
+      <link>http://www.math.utah.edu/~miles/post/operator-splitting/</link>
+      <pubDate>Fri, 02 Mar 2018 00:00:00 +0000</pubDate>
+      
+      <guid>http://www.math.utah.edu/~miles/post/operator-splitting/</guid>
+      <description>&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/htmlwidgets/htmlwidgets.js&#34;&gt;&lt;/script&gt;
+&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/pymjs/pym.v1.js&#34;&gt;&lt;/script&gt;
+&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/widgetframe-binding/widgetframe.js&#34;&gt;&lt;/script&gt;
+
+
+&lt;p&gt;I stumbled across the recent paper &lt;a href=&#34;https://arxiv.org/abs/1710.02232&#34;&gt;“Efficient Reactive Brownian Dynamics”&lt;/a&gt;, which proposes a reaction-diffusion scheme based on a technique called Strang splitting. While I was vaguely familiar with the notion of splitting, I wanted to write up this post to think out some of the details I hadn’t previously.&lt;/p&gt;
+&lt;p&gt;The reaction-diffusion scheme is a perfect context to understand splitting because there are effectively two (coupled, but distinct) dynamics going on: diffusion and reactions. This will be the generic setup we’ll consider in this post. Suppose we have some quantity &lt;span class=&#34;math inline&#34;&gt;\(u(t)\)&lt;/span&gt; that evolves by the differential equation
+&lt;span class=&#34;math display&#34; id=&#34;eq:full&#34;&gt;\[\begin{equation}
+\frac{\partial u}{\partial t} = L_1(u) + L_2(u),\tag{1}
+\end{equation}\]&lt;/span&gt;
+where &lt;span class=&#34;math inline&#34;&gt;\(L_1,L_2\)&lt;/span&gt; are two operators. While we’ll consider some specific choices of these operators, I’ll mention now that we’re not limited to just ODEs for this. That is, &lt;span class=&#34;math inline&#34;&gt;\(u\)&lt;/span&gt; could be a function of &lt;span class=&#34;math inline&#34;&gt;\(x\)&lt;/span&gt;, and &lt;span class=&#34;math inline&#34;&gt;\(L_i\)&lt;/span&gt; could be an differential operator in &lt;span class=&#34;math inline&#34;&gt;\(x\)&lt;/span&gt;, giving us a PDE for &lt;span class=&#34;math inline&#34;&gt;\(u(x,t)\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;The whole idea is then: we want to somehow solve the two problems separately. That is, we want to split &lt;a href=&#34;#eq:full&#34;&gt;(1)&lt;/a&gt; into the subproblems
+&lt;span class=&#34;math display&#34; id=&#34;eq:L1L2&#34;&gt;\[\begin{equation}
+\begin{cases}
+\frac{\partial u_1}{\partial t} &amp;amp;= L_1 (u_1)\\
+\frac{\partial u_2}{\partial t} &amp;amp;= L_2 (u_2)
+\end{cases}\tag{2}
+\end{equation}\]&lt;/span&gt;
+Say we were able to solve the system &lt;a href=&#34;#eq:L1L2&#34;&gt;(2)&lt;/a&gt;, how do we combine &lt;span class=&#34;math inline&#34;&gt;\(u_1\)&lt;/span&gt; and &lt;span class=&#34;math inline&#34;&gt;\(u_2\)&lt;/span&gt; to construct the solution &lt;span class=&#34;math inline&#34;&gt;\(u(t)\)&lt;/span&gt; to the full system &lt;a href=&#34;#eq:full&#34;&gt;(1)&lt;/a&gt;?&lt;/p&gt;
+&lt;div id=&#34;linearity-matrix-exponentials&#34; class=&#34;section level2&#34;&gt;
+&lt;h2&gt;Linearity, Matrix exponentials&lt;/h2&gt;
+&lt;p&gt;Suppose that &lt;span class=&#34;math inline&#34;&gt;\(L_1, L_2\)&lt;/span&gt; are both &lt;strong&gt;linear&lt;/strong&gt; operators, and &lt;span class=&#34;math inline&#34;&gt;\(u(t)\)&lt;/span&gt; does not depend on space, so &lt;span class=&#34;math inline&#34;&gt;\(L_1, L_2\)&lt;/span&gt; are just matrices. The solution to &lt;a href=&#34;#eq:full&#34;&gt;(1)&lt;/a&gt; can be constructed by the matrix exponential
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+    u(t) = e^{(L_1+L_2)t}u(0).
+\end{equation}\]&lt;/span&gt;
+Using the same technique, we know the solutions to &lt;a href=&#34;#eq:L1L2&#34;&gt;(2)&lt;/a&gt; are
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+    u_1(t) = e^{L_1 t}u_1(0), \qquad u_2(t) e^{L_2 t} u_2(0).
+\end{equation}\]&lt;/span&gt;
+Because we’re cooking up &lt;span class=&#34;math inline&#34;&gt;\(u_1,u_2\)&lt;/span&gt; we can choose initial conditions on &lt;span class=&#34;math inline&#34;&gt;\(u_1, u_2\)&lt;/span&gt; however we’d like. Say, we take &lt;span class=&#34;math inline&#34;&gt;\(u_1(0)u_2(0)=u(0)\)&lt;/span&gt;. Is this enough to make the answer obvious?
+If we then consider
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+    u_*(t) := u_1(t)u_2(t) = e^{L_1 t} u_1(0) e^{L_2 t} u_2(0) = e^{L_1 t} e^{L_2 t} u(0),
+\end{equation}\]&lt;/span&gt;
+does this give us the solution to our original problem? &lt;strong&gt;No!&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;Unfortunately, the properties of &lt;em&gt;matrix&lt;/em&gt; exponentials tell us that (in general)
+&lt;span class=&#34;math display&#34; id=&#34;eq:AB&#34;&gt;\[\begin{equation}
+    e^{A+B} \neq e^{A}e^{B},\tag{3}
+\end{equation}\]&lt;/span&gt;
+and therefore
+&lt;span class=&#34;math display&#34; id=&#34;eq:AB&#34;&gt;\[\begin{equation}
+    e^{L_1 t} e^{L_2 t} \neq  e^{(L_1+L_2)t}.
+\end{equation}\]&lt;/span&gt;&lt;/p&gt;
+&lt;/div&gt;
+&lt;div id=&#34;commutators-bch-formula&#34; class=&#34;section level2&#34;&gt;
+&lt;h2&gt;Commutators, BCH formula&lt;/h2&gt;
+&lt;p&gt;Is \tag{3} ever true? That is, can we ever naively combine matrix exponentials? It turns out, the answer to this is &lt;em&gt;yes&lt;/em&gt;, if &lt;span class=&#34;math inline&#34;&gt;\(A,B\)&lt;/span&gt; commute. That is
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+    AB = BA \qquad \leftrightarrow \qquad e^{A}e^{B} = e^{A+B}.
+\end{equation}\]&lt;/span&gt;
+We’ll look at concrete examples later, but it turns out that this is pretty rare. Is all hope lost? Is there any way to recover an approximation for &lt;span class=&#34;math inline&#34;&gt;\(u(t)\)&lt;/span&gt; from this technique?&lt;/p&gt;
+&lt;p&gt;The answer (somewhat surprisingly) comes from Lie theory, in the form of the Baker-Campell-Hausdorff (BCH) formula. To state the formula, first I must mention the &lt;strong&gt;commutator&lt;/strong&gt; of two matrices &lt;span class=&#34;math inline&#34;&gt;\(A,B\)&lt;/span&gt;, defined by
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+    [A,B] := AB - BA.
+\end{equation}\]&lt;/span&gt;
+Note that if &lt;span class=&#34;math inline&#34;&gt;\(A,B\)&lt;/span&gt; commute, &lt;span class=&#34;math inline&#34;&gt;\([A,B] = 0\)&lt;/span&gt;. With this, we can state the classical result.&lt;/p&gt;
+&lt;div id=&#34;baker-campell-hausdorff-formula&#34; class=&#34;section level3&#34;&gt;
+&lt;h3&gt;Baker-Campell-Hausdorff formula&lt;/h3&gt;
+&lt;p&gt;Consider the matrices &lt;span class=&#34;math inline&#34;&gt;\(A,B,C\)&lt;/span&gt; such that
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+e^{A}e^{B} = e^{C}
+\end{equation}\]&lt;/span&gt;
+then &lt;span class=&#34;math inline&#34;&gt;\(C\)&lt;/span&gt; can be computed by the series
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+    C = A +B  + \frac{1}{2} [A,B] + \frac{1}{12}[A,[A,B]]+ \cdots.
+\end{equation}\]&lt;/span&gt;
+The usefulness of this is hopefully apparent: even though our linear operators may not commute, we can take progressive terms of this series to get an approximation for the full solution to our system.&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div id=&#34;splitting-techniques-errors&#34; class=&#34;section level2&#34;&gt;
+&lt;h2&gt;Splitting techniques, errors&lt;/h2&gt;
+&lt;p&gt;We’ve discussed already the possibility of some approximations, but I just wanted to associate the names used in the literature with the explicit expressions used.&lt;/p&gt;
+&lt;p&gt;The most naive approximation, but also the simplest is&lt;/p&gt;
+&lt;div id=&#34;first-order-splitting&#34; class=&#34;section level3&#34;&gt;
+&lt;h3&gt;First order splitting&lt;/h3&gt;
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+    e^{t(L_1+L_2)} \approx e^{tL_1} e^{tL_2}.
+\end{equation}\]&lt;/span&gt;
+&lt;p&gt;We know from the BCH formula that if &lt;span class=&#34;math inline&#34;&gt;\(L_1,L_2\)&lt;/span&gt; commute, this is an &lt;em&gt;exact&lt;/em&gt; technique. However, the BCH formula also provides the next approximation&lt;/p&gt;
+&lt;/div&gt;
+&lt;div id=&#34;second-order-strang-splitting&#34; class=&#34;section level3&#34;&gt;
+&lt;h3&gt;Second order (Strang) splitting&lt;/h3&gt;
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+    e^{t(L_1+L_2)} \approx e^{\frac{1}{2} tL_1} e^{tL_2} e^{\frac{1}{2}t L_1}.
+\end{equation}\]&lt;/span&gt;
+&lt;p&gt;This approximation was popularized by &lt;a href=&#34;https://en.wikipedia.org/wiki/Gilbert_Strang&#34;&gt;Gil Strang&lt;/a&gt; and associated with his name. The perhaps more useful description of second order comes from the observation that the BCH formula actually provides error estimates
+&lt;span class=&#34;math display&#34; id=&#34;eq:strang&#34;&gt;\[\begin{equation}
+    e^{t(L_1+L_2)} - e^{\frac{1}{2} tL_1} e^{tL_2} e^{\frac{1}{2}t L_1} \sim \mathcal{O}(h^3), \tag{4}
+\end{equation}\]&lt;/span&gt;
+which describes the &lt;em&gt;local error&lt;/em&gt; introduced by the approximation, and therefore the global error
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+    \text{global error} = \text{(# of steps)} \times \text{(error at each step)} \sim \frac{1}{h} \times h^3 \sim \mathcal{O}(h^2),
+\end{equation}\]&lt;/span&gt;
+hence the name &lt;em&gt;second order splitting&lt;/em&gt;.&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div id=&#34;examples&#34; class=&#34;section level2&#34;&gt;
+&lt;h2&gt;Examples&lt;/h2&gt;
+&lt;div id=&#34;advection-diffusion&#34; class=&#34;section level3&#34;&gt;
+&lt;h3&gt;Advection-Diffusion&lt;/h3&gt;
+&lt;p&gt;In this section, I’ll discuss a few examples, most of which are taken from &lt;a href=&#34;https://ocw.mit.edu/courses/mathematics/18-336-numerical-methods-for-partial-differential-equations-spring-2009/lecture-notes/MIT18_336S09_lec20.pdf&#34;&gt;these lecture notes&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;Consider the classical advection-diffusion equation
+&lt;span class=&#34;math display&#34; id=&#34;eq:advec-diff&#34;&gt;\[\begin{equation}
+    \partial_t u = -v u_x + Du_{xx}.\tag{5}
+\end{equation}\]&lt;/span&gt;
+Here, we have two clear parts, so take
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+    L_1 u := -v u_x, \qquad L_2 u := Du_{xx}.
+\end{equation}\]&lt;/span&gt;
+What happens when we apply splitting to this problem? Let’s use the BCH formula to see how these operators interact:
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+    L_1 L_2 u = -v(D u_{xx})_{x} = D (-v u_{x})_{xx} = L_2 L_1 u,
+\end{equation}\]&lt;/span&gt;
+so $[L_1,L_2] =0 $. Therefore, we know that first order splitting is &lt;em&gt;exact&lt;/em&gt; in this case, meaning that
+&lt;span class=&#34;math display&#34; id=&#34;eq:advec-sol&#34;&gt;\[\begin{equation}
+    u(x,t) = e^{(L_1+L_2)t} u(0) = e^{tL_1} e^{tL_2} u_0(x). 
+    \tag{6}
+\end{equation}\]&lt;/span&gt;
+If we unpack &lt;a href=&#34;#eq:advec-sol&#34;&gt;(6)&lt;/a&gt; a bit, we’ll find that it provides a surprisingly intuitive result. Consider the two rightmost terms: &lt;span class=&#34;math inline&#34;&gt;\(\exp{(t L_2)} u(0)\)&lt;/span&gt;. We know &lt;span class=&#34;math inline&#34;&gt;\(L_2\)&lt;/span&gt; is just the pure diffusion operator, so the exponential is the solution operator (generator of the semi-group, if those words mean anything) for the heat/diffusion equation equation applied to some initial condition. Consequently,
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+e^{tL_2} u_0(x) = u^\star(x,t) \quad \leftrightarrow \quad \partial_ tu^\star = D \partial_{xx} u^\star, \,\, u^\star(x,0) = u_0(x).
+\end{equation}\]&lt;/span&gt;
+Now, we must apply the &lt;span class=&#34;math inline&#34;&gt;\(L_1\)&lt;/span&gt; exponential, but this is simply the solution operator for the pure advection equation applied to an initial condition, which we know produces a traveling wave solution. Consequently, we immediately have
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+e^{tL_1} u^\star(x,t) = u^\star(x-vt,t). 
+\end{equation}\]&lt;/span&gt;
+While this solution can easily be obtained by a Fourier transform, the splitting technique breaks down each operator’s contribution to the full solution to &lt;a href=&#34;#eq:advec-diff&#34;&gt;(5)&lt;/a&gt;, in (what I think are) intuitive parts.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div id=&#34;reaction-diffusion&#34; class=&#34;section level3&#34;&gt;
+&lt;h3&gt;Reaction-Diffusion&lt;/h3&gt;
+&lt;p&gt;In the last example, we saw that &lt;em&gt;sometimes&lt;/em&gt; operators commute and work out nicely, however this is usually not the case. I started this post by suggesting that reaction-diffusion is a natural place for splitting to arise, so let’s consider the simplest scenario of such. Consider the PDE
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+\partial_t u = D \partial_{xx} u + (a-b u),
+\end{equation}\]&lt;/span&gt;
+and call &lt;span class=&#34;math inline&#34;&gt;\(L_1\)&lt;/span&gt; the diffusive part and &lt;span class=&#34;math inline&#34;&gt;\(L_2\)&lt;/span&gt; the reaction (just decay in this case). We can easily check that these do not commute by comparing
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+    L_1 L_2 u = -bDu_{xx} \qquad \neq \qquad L_2 L_1 u = a-bD_{uxx},
+\end{equation}\]&lt;/span&gt;
+meaning this is a case where first order splitting is  exact, but we’ve established a few appropriate approximations.&lt;/p&gt;
+&lt;p&gt;Here, I’ll show a brief (crude) implementation of Strang splitting in R, using Crank-Nicolson for the diffusion part and forward Euler for the reaction term.&lt;a href=&#34;#fn1&#34; class=&#34;footnote-ref&#34; id=&#34;fnref1&#34;&gt;&lt;sup&gt;1&lt;/sup&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;We first just establish some preliminary constants for the simulation&lt;/p&gt;
+&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;dt = .001; # step size in time
+dx = .05; # step size in space
+T = 1; # max time
+
+D = 1; # diff coefficient
+b = .6; # decay rate
+a = 1.0; # birth rate
+L = 1; # length of domain
+
+Nt = round(T/dt) # number of time stpes
+Nx = round(L/dx) # number of spatial points
+x = seq(0, L, length.out=Nx+1)    # Mesh points in space
+uvals = matrix(nrow=(Nx+1),ncol=(Nt+1)) # matrix of solutions
+
+uvals[,1] = sin(pi*x/L) # just some nice initial condition that satisfies BCs&lt;/code&gt;&lt;/pre&gt;
+&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;## reaction term  f(u) = a-bu
+f &amp;lt;- function(u, x,t){
+ return (a-b*u)
+}&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;From there, we just need to specify how we’ll numerically solve each of the components. For the reaction, we just simply take an Euler step&lt;/p&gt;
+&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;# forward euler, u_{i+1} = u_i + dt*f(u_i)
+rxn_step = function(u,dt){ 
+  return (u + dt*f(u))
+}&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;For the diffusion term, things get a little more complicated, but ultimately we’re just going to use &lt;a href=&#34;https://en.wikipedia.org/wiki/Crank%E2%80%93Nicolson_method&#34;&gt;Crank-Nicolson&lt;/a&gt;, implemented (probably poorly) below&lt;/p&gt;
+&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;# Construct tridiagonal matrix
+tridiag &amp;lt;- function(upper, lower, main){
+    out &amp;lt;- matrix(0,length(main),length(main))
+    diag(out) &amp;lt;- main
+    indx &amp;lt;- seq.int(length(upper))
+    out[cbind(indx+1,indx)] &amp;lt;- lower
+    out[cbind(indx,indx+1)] &amp;lt;- upper
+    return(out)
+} 
+
+# Crank Nicolson, NOT including rxns because of splitting
+diffusion_step = function(u,dt){
+    mu = 0.5*D*dt/(dx^2); # 0.5*CFL number
+    diagonal = rep(1+2*mu, Nx+1)
+    lower = rep(-mu,Nx)
+    upper = rep(-mu,Nx)
+    
+    # BCs
+    diagonal[1] = 1;
+    upper[1] = 0;
+    diagonal[Nx+1] = 1;
+    lower[Nx] = 0;
+    A&amp;lt;- tridiag(upper,lower,diagonal)    
+    bb = numeric(Nx+1);
+    bb[2:(Nx)] = u[2:(Nx)]+mu*(u[1:(Nx-1)] - 2*u[2:(Nx)] + u[3:(Nx+1)]);
+    usol &amp;lt;- solve(A,bb)
+    return(usol)
+}&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;Now, we use the Strang splitting described by &lt;a href=&#34;#eq:strang&#34;&gt;(4)&lt;/a&gt;, which says at each step: take &lt;span class=&#34;math inline&#34;&gt;\(0.5 \Delta t\)&lt;/span&gt; of a reaction step, followed by &lt;span class=&#34;math inline&#34;&gt;\(\Delta t\)&lt;/span&gt; of a diffusion step, and then finally &lt;span class=&#34;math inline&#34;&gt;\(0.5\Delta t\)&lt;/span&gt; of a reaction step.&lt;/p&gt;
+&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;for (i in 1:Nt){
+    uold_split = uvals[,i];
+    uuu_split = rxn_step(uold_split,dt/2);
+    uu_split = diffusion_step(uuu_split,dt);
+    u_split = rxn_step(uu_split,dt/2);
+    uvals[,i+1] = u_split;
+}&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;Now we’ve constructed our solution, we see we get a nice plot.
+&lt;div id=&#34;htmlwidget-1&#34; style=&#34;width:100%;height:450px;&#34; class=&#34;widgetframe html-widget&#34;&gt;&lt;/div&gt;
+&lt;script type=&#34;application/json&#34; data-for=&#34;htmlwidget-1&#34;&gt;{&#34;x&#34;:{&#34;url&#34;:&#34;/~miles/post/2018-03-02-operator-splitting_files/figure-html//widgets/widget_unnamed-chunk-7.html&#34;,&#34;options&#34;:{&#34;xdomain&#34;:&#34;*&#34;,&#34;allowfullscreen&#34;:false,&#34;lazyload&#34;:false}},&#34;evals&#34;:[],&#34;jsHooks&#34;:[]}&lt;/script&gt;
+A lot of improvements can be made to this code, but hopefully this conveys the barebones idea.&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div id=&#34;loose-ends&#34; class=&#34;section level2&#34;&gt;
+&lt;h2&gt;Loose ends&lt;/h2&gt;
+&lt;p&gt;This post really covers only the broad strokes of splitting. We haven’t addressed some very natural questions, such as:&lt;/p&gt;
+&lt;ol style=&#34;list-style-type: decimal&#34;&gt;
+&lt;li&gt;&lt;em&gt;if each of the split subproblems is numerically stable, is the full problem?&lt;/em&gt;&lt;/li&gt;
+&lt;li&gt;&lt;em&gt;how do we split so that steady-state solutions are preserved?&lt;/em&gt;&lt;/li&gt;
+&lt;li&gt;&lt;em&gt;how do we extend this to stochastic equations?&lt;/em&gt;&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;A great discussion (and huge resource for this post) can be found in &lt;a href=&#34;http://www.math.ucla.edu/~wotaoyin/splittingbook/ch3-macnamara-strang.pdf&#34;&gt;this book chapter&lt;/a&gt; co-authored by Gil Strang himself. A nice discussion of a Python implementation of Strang splitting can be found &lt;a href=&#34;https://hplgit.github.io/fdm-book/doc/pub/book/sphinx/._book018.html&#34;&gt;here&lt;/a&gt;.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class=&#34;footnotes&#34;&gt;
+&lt;hr /&gt;
+&lt;ol&gt;
+&lt;li id=&#34;fn1&#34;&gt;&lt;p&gt;these choices are a little dumb, as the Euler stepping limits the error to first order, but I just want to show how easy it is to implement splitting&lt;a href=&#34;#fnref1&#34; class=&#34;footnote-back&#34;&gt;↩&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;
+&lt;/ol&gt;
+&lt;/div&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Diffusing diffusivities, stochastic subordination</title>
+      <link>http://www.math.utah.edu/~miles/post/diff-diff/</link>
+      <pubDate>Wed, 06 Dec 2017 00:00:00 +0000</pubDate>
+      
+      <guid>http://www.math.utah.edu/~miles/post/diff-diff/</guid>
+      <description>&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/htmlwidgets/htmlwidgets.js&#34;&gt;&lt;/script&gt;
+&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/pymjs/pym.v1.js&#34;&gt;&lt;/script&gt;
+&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/widgetframe-binding/widgetframe.js&#34;&gt;&lt;/script&gt;
+
+
+&lt;p&gt;In this post, I’ll discuss an idea emerging in the statistical physics community
+that attempts to resolve some unexplained observations of motion of single particles.&lt;a href=&#34;#fn1&#34; class=&#34;footnote-ref&#34; id=&#34;fnref1&#34;&gt;&lt;sup&gt;1&lt;/sup&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;div id=&#34;anomalous-yet-brownian&#34; class=&#34;section level1&#34;&gt;
+&lt;h1&gt;Anomalous yet Brownian&lt;/h1&gt;
+&lt;p&gt;The motivation is as follows: suppose we observe two particles and keep track of their trajectory, as seen in Figure &lt;a href=&#34;#fig:fig1&#34;&gt;1&lt;/a&gt;.&lt;/p&gt;
+&lt;div class=&#34;figure&#34;&gt;&lt;span id=&#34;fig:fig1&#34;&gt;&lt;/span&gt;
+&lt;div id=&#34;htmlwidget-1&#34; style=&#34;width:100%;height:500px;&#34; class=&#34;widgetframe html-widget&#34;&gt;&lt;/div&gt;
+&lt;script type=&#34;application/json&#34; data-for=&#34;htmlwidget-1&#34;&gt;{&#34;x&#34;:{&#34;url&#34;:&#34;/~miles/post/2017-10-19-diff-diff_files/figure-html//widgets/widget_fig1.html&#34;,&#34;options&#34;:{&#34;xdomain&#34;:&#34;*&#34;,&#34;allowfullscreen&#34;:false,&#34;lazyload&#34;:false}},&#34;evals&#34;:[],&#34;jsHooks&#34;:[]}&lt;/script&gt;
+&lt;p class=&#34;caption&#34;&gt;
+Figure 1: Two (simulated) trajectories of particles undergoing what seems to be classical Brownian motion (diffusion).
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;p&gt;Although it certainly looks like they are “diffusing”, we want to characterize more precisely (statistically) the motion of these two particles.
+The standard way of doing so is &lt;em&gt;mean squared displacement (MSD)&lt;/em&gt; analysis. Although “mean” could mean over many possible trajectories,
+in the context of single particle tracking, it is usually associated with a single trajectory. Call &lt;span class=&#34;math inline&#34;&gt;\(X_i\)&lt;/span&gt; the &lt;span class=&#34;math inline&#34;&gt;\(i\)&lt;/span&gt;th observation
+of the particle, which we are assuming we observe at regular snapshots of time &lt;span class=&#34;math inline&#34;&gt;\(\Delta t\)&lt;/span&gt;, so &lt;span class=&#34;math inline&#34;&gt;\(X_i\)&lt;/span&gt; is observed at time
+&lt;span class=&#34;math inline&#34;&gt;\(i \Delta t\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;The MSD is then, an average squared displacement over all windows (lags) of a particular size &lt;span class=&#34;math inline&#34;&gt;\(j\)&lt;/span&gt;,
+&lt;span class=&#34;math display&#34; id=&#34;eq:MSD&#34;&gt;\[\begin{equation}
+\text{MSD} := \langle X^2(j) \rangle = \frac{1}{n-j}\sum_{i=1}^{n-j} \left(X_{i+j} - X_{i}\right)^2,
+\tag{1}
+\end{equation}\]&lt;/span&gt;
+where, in &lt;a href=&#34;#eq:MSD&#34;&gt;(1)&lt;/a&gt;, &lt;span class=&#34;math inline&#34;&gt;\(n\)&lt;/span&gt; is our total number of observations. This quantity is nice because it distinguishes between
+a wide array of behaviors. Most notably, for classical diffusion, we have
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+\langle X^2(t) \rangle = 4Dt,
+\end{equation}\]&lt;/span&gt;
+meaning that we expect the MSD to be a line, where the slope encodes the diffusing coefficient (diffusivity). Deviations from a straight line
+are associated with &lt;em&gt;anomalous diffusion&lt;/em&gt;, either subdiffusion or superdiffusion often due to interactions complex environments. Therefore, the MSD
+is the first tool in diagnosing the behavior of our particles, and can be seen in Figure &lt;a href=&#34;#fig:fig2&#34;&gt;2&lt;/a&gt;.&lt;/p&gt;
+&lt;div class=&#34;figure&#34;&gt;&lt;span id=&#34;fig:fig2&#34;&gt;&lt;/span&gt;
+&lt;div id=&#34;htmlwidget-2&#34; style=&#34;width:100%;height:500px;&#34; class=&#34;widgetframe html-widget&#34;&gt;&lt;/div&gt;
+&lt;script type=&#34;application/json&#34; data-for=&#34;htmlwidget-2&#34;&gt;{&#34;x&#34;:{&#34;url&#34;:&#34;/~miles/post/2017-10-19-diff-diff_files/figure-html//widgets/widget_fig2.html&#34;,&#34;options&#34;:{&#34;xdomain&#34;:&#34;*&#34;,&#34;allowfullscreen&#34;:false,&#34;lazyload&#34;:false}},&#34;evals&#34;:[],&#34;jsHooks&#34;:[]}&lt;/script&gt;
+&lt;p class=&#34;caption&#34;&gt;
+Figure 2: A comparison of the mean squared displacement statistic &lt;span class=&#34;math inline&#34;&gt;\(\langle X^2(\tau)\rangle\)&lt;/span&gt; as a function of the lag (window) size &lt;span class=&#34;math inline&#34;&gt;\(\tau\)&lt;/span&gt;.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;p&gt;From Figure &lt;a href=&#34;#fig:fig2&#34;&gt;2&lt;/a&gt;, we see that the MSD curves for the two particles are not only lines, but effectively indistinguishable. Can we conclude
+they are undergoing the same, classical diffusive motion? We can go a bit further. Classical diffusion has another incredibly useful property: Gaussian behavior.
+In some time interval of size &lt;span class=&#34;math inline&#34;&gt;\(t\)&lt;/span&gt;, the probability of finding a particle displaced distance &lt;span class=&#34;math inline&#34;&gt;\(x\)&lt;/span&gt; is the Gaussian
+&lt;span class=&#34;math display&#34; id=&#34;eq:gauss&#34;&gt;\[\begin{equation}
+p(x,t) = \frac{1}{\sqrt{4\pi Dt}} e^{-\frac{x^2}{4Dt}}.
+\tag{2}
+\end{equation}\]&lt;/span&gt;
+We can compute this pretty easily for our data and get the following result.&lt;/p&gt;
+&lt;div class=&#34;figure&#34;&gt;&lt;span id=&#34;fig:fig3&#34;&gt;&lt;/span&gt;
+&lt;div id=&#34;htmlwidget-3&#34; style=&#34;width:100%;height:500px;&#34; class=&#34;widgetframe html-widget&#34;&gt;&lt;/div&gt;
+&lt;script type=&#34;application/json&#34; data-for=&#34;htmlwidget-3&#34;&gt;{&#34;x&#34;:{&#34;url&#34;:&#34;/~miles/post/2017-10-19-diff-diff_files/figure-html//widgets/widget_fig3.html&#34;,&#34;options&#34;:{&#34;xdomain&#34;:&#34;*&#34;,&#34;allowfullscreen&#34;:false,&#34;lazyload&#34;:false}},&#34;evals&#34;:[],&#34;jsHooks&#34;:[]}&lt;/script&gt;
+&lt;p class=&#34;caption&#34;&gt;
+Figure 3: Probability density &lt;span class=&#34;math inline&#34;&gt;\(p(x,t)\)&lt;/span&gt; of displacements &lt;span class=&#34;math inline&#34;&gt;\(x\)&lt;/span&gt; for time window &lt;span class=&#34;math inline&#34;&gt;\(\tau\)&lt;/span&gt;. For classical diffusion, we expect this to be a Gaussian that widens with time. Note the &lt;span class=&#34;math inline&#34;&gt;\(\log\)&lt;/span&gt; axis.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;p&gt;In Figure &lt;a href=&#34;#fig:fig3&#34;&gt;3&lt;/a&gt;, we finally see a clear difference between our two particles. Particle 1 (in green) seems to follow what we expect by &lt;a href=&#34;#eq:gauss&#34;&gt;(2)&lt;/a&gt;: a Gaussian
+that spreads out with longer times &lt;span class=&#34;math inline&#34;&gt;\(t\)&lt;/span&gt;. However, particle 2 seems to be doing something completely different. Note that &lt;a href=&#34;#fig:fig3&#34;&gt;3&lt;/a&gt; is on a log scale,
+and that the tails (large &lt;span class=&#34;math inline&#34;&gt;\(x\)&lt;/span&gt;) values decay linearly, which translates to an &lt;em&gt;exponential tail&lt;/em&gt;, or one that scales
+&lt;span class=&#34;math inline&#34;&gt;\(p(x) \sim |x|^{\beta}\)&lt;/span&gt; for large &lt;span class=&#34;math inline&#34;&gt;\(x\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;We’ve stumbled into an interesting question: what &lt;em&gt;is&lt;/em&gt; particle 2 doing? It looks like classical diffusion in some ways (linear MSD),
+but distinctly different in others (non-Gaussian displacement). While I motivated this with simulated data, there is precedence for investigation from experiments.&lt;/p&gt;
+&lt;div class=&#34;figure&#34; style=&#34;text-align: center&#34;&gt;&lt;span id=&#34;fig:wangfigs&#34;&gt;&lt;/span&gt;
+&lt;img src=&#34;http://www.math.utah.edu/~miles/~miles/img/diff-diff/wangfigs.png&#34; alt=&#34;Experimentally observed^[B. Wang et al., PNAS (2009) &amp;lt;a href=&amp;quot;http://www.pnas.org/content/106/36/15160.abstract&amp;quot;&amp;gt;&amp;lt;i class=&amp;quot;fa fa-external-link fa-1x&amp;quot;&amp;gt;&amp;lt;/i&amp;gt;&amp;lt;/a&amp;gt;] anomalous, yet diffusive behavior. Beads on lipid bilayer tubes and entangled in actin webs are both bound to have linear MSDs and non-Gaussian displacements.&#34; width=&#34;80%&#34; /&gt;
+&lt;p class=&#34;caption&#34;&gt;
+Figure 4: Experimentally observed&lt;a href=&#34;#fn2&#34; class=&#34;footnote-ref&#34; id=&#34;fnref2&#34;&gt;&lt;sup&gt;2&lt;/sup&gt;&lt;/a&gt; anomalous, yet diffusive behavior. Beads on lipid bilayer tubes and entangled in actin webs are both bound to have linear MSDs and non-Gaussian displacements.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;p&gt;In Figure &lt;a href=&#34;#fig:wangfigs&#34;&gt;4&lt;/a&gt;, we see the first experimental evidence motivating this. In this paper,
+the authors find two experimental setups, both involving beads interacting with cytoskeletal filaments which produced
+linear MSDs, but exponential tails for displacement. They do note that the exponential tails existed only for small times,
+but nonetheless, there is a clear deviation from classical diffusion.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div id=&#34;diffusing-diffusivities&#34; class=&#34;section level1&#34;&gt;
+&lt;h1&gt;Diffusing diffusivities&lt;/h1&gt;
+&lt;p&gt;From the motivation, it should be somewhat intuitive that we want to come up with a model that produces both
+i) a linear MSD, ii) non-Gaussian displacements. In the past few years, a number of papers have addressed this.&lt;/p&gt;
+&lt;div class=&#34;figure&#34; style=&#34;text-align: center&#34;&gt;&lt;span id=&#34;fig:diffpapers&#34;&gt;&lt;/span&gt;
+&lt;img src=&#34;http://www.math.utah.edu/~miles/~miles/img/diff-diff/diffdiffpapers.png&#34; alt=&#34;Some recent papers^[A. V. Chechkin et al., Phys. Rev. X  (2017) &amp;lt;a href=&amp;quot;https://journals.aps.org/prx/abstract/10.1103/PhysRevX.7.021002&amp;quot;&amp;gt;&amp;lt;i class=&amp;quot;fa fa-external-link fa-1x&amp;quot;&amp;gt;&amp;lt;/i&amp;gt;&amp;lt;/a&amp;gt;&amp;lt;br&amp;gt; M.V. Chubynsky and G.W. Slater, Phys. Rev. Lett. (2014) &amp;lt;a href=&amp;quot;https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.113.098302&amp;quot;&amp;gt;&amp;lt;i class=&amp;quot;fa fa-external-link fa-1x&amp;quot;&amp;gt;&amp;lt;/i&amp;gt;&amp;lt;/a&amp;gt;&amp;lt;br&amp;gt; Y. Lanoiselée, D. S. Grebenkov, arXiv:&amp;lt;span style=&amp;quot;font-family:Roboto Mono;&amp;quot;&amp;gt;1711.09588&amp;lt;/span&amp;gt; &amp;lt;a href=&amp;quot;https://arxiv.org/abs/1711.09588&amp;quot;&amp;gt;&amp;lt;i class=&amp;quot;fa fa-external-link fa-1x&amp;quot;&amp;gt;&amp;lt;/i&amp;gt;&amp;lt;/a&amp;gt;] with mathematical formalism on the diffusing diffusivity hypothesis.&#34; width=&#34;80%&#34; /&gt;
+&lt;p class=&#34;caption&#34;&gt;
+Figure 5: Some recent papers&lt;a href=&#34;#fn3&#34; class=&#34;footnote-ref&#34; id=&#34;fnref3&#34;&gt;&lt;sup&gt;3&lt;/sup&gt;&lt;/a&gt; with mathematical formalism on the diffusing diffusivity hypothesis.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;p&gt;A few different interpretations and models have emerged, as seen in Figure &lt;a href=&#34;#fig:diffpapers&#34;&gt;5&lt;/a&gt;. I will summarize the broad idea, although the details vary a bit from paper-to-paper.
+The main observation is that some sort of memory (correlation) for the system is needed, but where it exists is subtle. For instance subdiffusion is a classical model
+of diffusion with memory, but is not what we want, as it produces non-linear MSD curves. These authors identify that the correlation needs to be in the
+step &lt;em&gt;distance&lt;/em&gt;, rather than the step &lt;em&gt;direction&lt;/em&gt;. That is, if we call
+&lt;span class=&#34;math display&#34;&gt;\[
+\Delta X_i := X_i - X_{i-1}
+\]&lt;/span&gt;
+then,
+&lt;span class=&#34;math display&#34; id=&#34;eq:corr&#34;&gt;\[\begin{equation}
+\langle \Delta X_i \Delta X_j \rangle = 0, \quad \text{but} \quad \langle\Delta X_i^2 \Delta X_j^2 \rangle \neq \langle \Delta X_i^2\rangle \langle \Delta X_j^2\rangle.
+\tag{3}
+\end{equation}\]&lt;/span&gt;
+That is, &lt;a href=&#34;#eq:corr&#34;&gt;(3)&lt;/a&gt; encodes that the directions of steps are uncorrelated, but the magnitudes are not. The justification for this is that in a complex environment,
+particles change their diffusivity slowly by encountering different “parts” of the environment, meaning that there is a memory to the diffusivity itself.
+We could then assume that there is some probability distribution of diffusivities, denoted &lt;span class=&#34;math inline&#34;&gt;\(\pi(D)\)&lt;/span&gt;, meaning we can
+average the displacements over all possible values of &lt;span class=&#34;math inline&#34;&gt;\(D\)&lt;/span&gt; to obtain &lt;span class=&#34;math inline&#34;&gt;\(p(x,t)\)&lt;/span&gt;:
+&lt;span class=&#34;math display&#34; id=&#34;eq:pxt&#34;&gt;\[\begin{equation}
+p(x,t) = \int_{0}^{\infty} \pi(D) \frac{1}{\sqrt{4\pi D t}} e^{-\frac{x^2}{4Dt}}.
+\tag{4}
+\end{equation}\]&lt;/span&gt;
+One possibility is that the distribution of diffusivities is exponential,
+&lt;span class=&#34;math display&#34; id=&#34;eq:pid&#34;&gt;\[\begin{equation}
+\pi(D) = \frac{1}{\langle D \rangle} e^{-D/\langle D \rangle},
+\tag{5}
+\end{equation}\]&lt;/span&gt;
+in which case, &lt;a href=&#34;#eq:pxt&#34;&gt;(4)&lt;/a&gt; becomes the Laplace distribution
+&lt;span class=&#34;math display&#34; id=&#34;eq:laplace&#34;&gt;\[\begin{equation}
+p(x,t) = \frac{1}{\sqrt{4\langle D \rangle t}} e^{-\frac{|x|}{\sqrt{\langle D \rangle t}}}.
+\tag{6}
+\end{equation}\]&lt;/span&gt;
+&lt;a href=&#34;#eq:laplace&#34;&gt;(6)&lt;/a&gt; does indeed have the feature of exponential tails that we are hoping for, but this is for all &lt;span class=&#34;math inline&#34;&gt;\(t\)&lt;/span&gt;, even though, experimentally, we see
+convergence to Gaussian behavior for large &lt;span class=&#34;math inline&#34;&gt;\(t\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;To resolve this, we can put &lt;em&gt;dynamics&lt;/em&gt; on the diffusivity, &lt;span class=&#34;math inline&#34;&gt;\(D\)&lt;/span&gt;, with the following set of stochastic differential equations
+&lt;span class=&#34;math display&#34; id=&#34;eq:diffdiff&#34;&gt;\[\begin{align}
+\dot{X}(t) &amp;amp;= \sqrt{2D(t)} \, \xi(t)\\
+D(t) &amp;amp;= Y^2(t)\\
+\dot{Y}(t)&amp;amp;=-\frac{1}{\tau} Y + \sigma \eta(t),
+\tag{7}
+\end{align}\]&lt;/span&gt;
+where &lt;span class=&#34;math inline&#34;&gt;\(\eta, \xi\)&lt;/span&gt; are independent white-noise processes. This says that &lt;span class=&#34;math inline&#34;&gt;\(Y(t)\)&lt;/span&gt; undergoes an Ornstein-Uhlenbeck process and the magnitude of &lt;span class=&#34;math inline&#34;&gt;\(Y(t)\)&lt;/span&gt; dictates the diffusivity &lt;span class=&#34;math inline&#34;&gt;\(D(t)\)&lt;/span&gt;.
+At long times, the statinary density of &lt;span class=&#34;math inline&#34;&gt;\(D\)&lt;/span&gt; is exactly of the form &lt;a href=&#34;#eq:pid&#34;&gt;(5)&lt;/a&gt; with &lt;span class=&#34;math inline&#34;&gt;\(\langle D \rangle = \sigma^2 \tau\)&lt;/span&gt;. In fact, &lt;a href=&#34;#eq:diffdiff&#34;&gt;(7)&lt;/a&gt; is exactly what I simulated to obtain
+particle 2 in Figure &lt;a href=&#34;#fig:fig1&#34;&gt;1&lt;/a&gt; so that &lt;span class=&#34;math inline&#34;&gt;\(\langle D \rangle\)&lt;/span&gt; was equal to the constant &lt;span class=&#34;math inline&#34;&gt;\(D\)&lt;/span&gt; of particle 1.&lt;/p&gt;
+&lt;p&gt;One interesting feature of &lt;a href=&#34;#eq:diffdiff&#34;&gt;(7)&lt;/a&gt; is worth pointing out right away. While we think of the particle &lt;span class=&#34;math inline&#34;&gt;\(X(t) \in \mathbb{R}^d\)&lt;/span&gt; diffusing in &lt;span class=&#34;math inline&#34;&gt;\(d=2,3\)&lt;/span&gt; dimensions,
+this formulation does &lt;em&gt;not&lt;/em&gt; require that &lt;span class=&#34;math inline&#34;&gt;\(Y(t)\)&lt;/span&gt; be evolving in the same number of dimensions. The authors provide commentary on this, but ultimately it seems to remain elusive.
+What would it mean for the diffusivity to evolve in a higher or lower dimension than the particle itself?&lt;/p&gt;
+&lt;p&gt;It’s also worth pointing out that &lt;a href=&#34;#eq:diffdiff&#34;&gt;(7)&lt;/a&gt; has actually been considered before in another context: finance. This process is closely related to the Cox-Ingersoll-Ross (CIR) model describing the evolution of interest rates.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div id=&#34;stochastic-subordination&#34; class=&#34;section level1&#34;&gt;
+&lt;h1&gt;Stochastic subordination&lt;/h1&gt;
+&lt;p&gt;Studying &lt;a href=&#34;#eq:diffdiff&#34;&gt;(7)&lt;/a&gt; further requires a cute mathematical trick called stochastic subordination. Effectively, this is a change of variables on time, where the evolution of the new time
+is random (and not necessarily monotonically increasing).&lt;/p&gt;
+&lt;p&gt;We can rewrite our system in Fokker-Planck form for the probability density &lt;span class=&#34;math inline&#34;&gt;\(\tilde{p}(x,t)\)&lt;/span&gt; conditioned on some realization of &lt;span class=&#34;math inline&#34;&gt;\(D(t)\)&lt;/span&gt;, so
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+\tilde{p}(x,t) = p\left(x,t | D(t)\right)
+\end{equation}\]&lt;/span&gt;
+which just provides the standard diffusion equation
+&lt;span class=&#34;math display&#34; id=&#34;eq:FPE&#34;&gt;\[\begin{equation}
+\partial_t \tilde{p}(x,t) = D(t) \nabla^2 \tilde{p}(x,t).
+\tag{8}
+\end{equation}\]&lt;/span&gt;
+With this in mind, we now think of the change of variables
+&lt;span class=&#34;math display&#34; id=&#34;eq:subord&#34;&gt;\[\begin{equation}
+\frac{\mathrm{d}}{\mathrm{d}\tau} x(\tau) = \sqrt{2} \xi(t), \qquad \frac{\mathrm{d}}{\mathrm{d}t} \tau(t) = D(t).
+\tag{9}
+\end{equation}\]&lt;/span&gt;
+The change of variables &lt;a href=&#34;#eq:subord&#34;&gt;(9)&lt;/a&gt; is convenient because we now can write the solution to &lt;a href=&#34;#eq:FPE&#34;&gt;(8)&lt;/a&gt; as
+&lt;span class=&#34;math display&#34; id=&#34;eq:pxtau&#34;&gt;\[\begin{equation}
+\tilde{p}(x,\tau) = \frac{1}{\sqrt{4\pi \tau}} e^{-\frac{x^2}{4\tau}},
+\tag{10}
+\end{equation}\]&lt;/span&gt;
+where &lt;span class=&#34;math inline&#34;&gt;\(\tau\)&lt;/span&gt; in &lt;a href=&#34;#eq:pxtau&#34;&gt;(10)&lt;/a&gt; must be interpreted as a random quantity, but, is known from &lt;a href=&#34;#eq:subord&#34;&gt;(9)&lt;/a&gt; and &lt;a href=&#34;#eq:diffdiff&#34;&gt;(7)&lt;/a&gt;
+to be the stochastic integral
+&lt;span class=&#34;math display&#34; id=&#34;eq:tau&#34;&gt;\[\begin{equation}
+\tau(t) = \int_0^t D(s) \, \mathrm{d} s = \int_0^t Y^2(s) \, \mathrm{d} s.
+\tag{11}
+\end{equation}\]&lt;/span&gt;
+Let &lt;span class=&#34;math inline&#34;&gt;\(T(\tau,t)\)&lt;/span&gt; be the probability density of &lt;span class=&#34;math inline&#34;&gt;\(\tau\)&lt;/span&gt; which evolves by &lt;a href=&#34;#eq:tau&#34;&gt;(11)&lt;/a&gt;, then the true displacement can be found by integrating over all possibilities of &lt;span class=&#34;math inline&#34;&gt;\(\tau\)&lt;/span&gt;
+&lt;span class=&#34;math display&#34; id=&#34;eq:Pxt&#34;&gt;\[\begin{equation}
+p(x,t) = \int_0^\infty T(\tau,t) \tilde{p}(x,\tau) \, \mathrm{d} \tau.
+\tag{12}
+\end{equation}\]&lt;/span&gt;
+I will leave the details out here, but we did all this work because the Fourier transform of &lt;span class=&#34;math inline&#34;&gt;\(p(x,t)\)&lt;/span&gt;, described by the integral &lt;a href=&#34;#eq:Pxt&#34;&gt;(12)&lt;/a&gt; can be computed explicitly, which is somewhat surprising.&lt;/p&gt;
+&lt;p&gt;One nice way to quantify deviations from Gaussian-ness is the kurtosis, defined to be
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+K := \frac{\langle x^4(t)\rangle}{\langle x^2(t)\rangle^2}.
+\end{equation}\]&lt;/span&gt;
+Recall that a 1D Gaussian has kurtosis &lt;span class=&#34;math inline&#34;&gt;\(K=3\)&lt;/span&gt;, and values larger than &lt;span class=&#34;math inline&#34;&gt;\(K=3\)&lt;/span&gt; measure how not-Gaussian a distribution is. By solving &lt;a href=&#34;#eq:Pxt&#34;&gt;(12)&lt;/a&gt; using the Fourier transform, the authors find
+&lt;span class=&#34;math display&#34; id=&#34;eq:K&#34;&gt;\[\begin{equation}
+K \sim \begin{cases} 9 &amp;amp; \text{for small }t \\
+3 &amp;amp; \text{for large }t, \end{cases}
+\tag{13}
+\end{equation}\]&lt;/span&gt;
+where I have written the results for 1D, but the results find this formula for any dimension. The kurtosis result &lt;a href=&#34;#eq:K&#34;&gt;(13)&lt;/a&gt; has the exact
+behavior observed experimentally: large deviations from Gaussian displacement (large &lt;span class=&#34;math inline&#34;&gt;\(K\)&lt;/span&gt;) for small &lt;span class=&#34;math inline&#34;&gt;\(t\)&lt;/span&gt;, but close to Gaussian behavior (&lt;span class=&#34;math inline&#34;&gt;\(K \approx 3\)&lt;/span&gt;) for large &lt;span class=&#34;math inline&#34;&gt;\(t\)&lt;/span&gt;.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div id=&#34;testing-the-hypothesis&#34; class=&#34;section level1&#34;&gt;
+&lt;h1&gt;Testing the hypothesis&lt;/h1&gt;
+&lt;p&gt;While the diffusing-diffusivity model seems to indeed match experiments quite well, it isn’t wildly mechanistic in its description. Therefore, we should be curious: can we make predictions from (or “verify”) this very coarsed grained model?&lt;/p&gt;
+&lt;div class=&#34;figure&#34; style=&#34;text-align: center&#34;&gt;&lt;span id=&#34;fig:testfig&#34;&gt;&lt;/span&gt;
+&lt;img src=&#34;http://www.math.utah.edu/~miles/~miles/img/diff-diff/testfig.png&#34; alt=&#34;Experimental setup^[M. Matse et al., Phys. Rev. E  (2017) &amp;lt;a href=&amp;quot;https://journals.aps.org/pre/abstract/10.1103/PhysRevE.96.042604&amp;quot;&amp;gt;&amp;lt;i class=&amp;quot;fa fa-external-link fa-1x&amp;quot;&amp;gt;&amp;lt;/i&amp;gt;&amp;lt;/a&amp;gt; ] attempting to validate the diffusing diffusivity hypothesis.&#34; width=&#34;80%&#34; /&gt;
+&lt;p class=&#34;caption&#34;&gt;
+Figure 6: Experimental setup&lt;a href=&#34;#fn4&#34; class=&#34;footnote-ref&#34; id=&#34;fnref4&#34;&gt;&lt;sup&gt;4&lt;/sup&gt;&lt;/a&gt; attempting to validate the diffusing diffusivity hypothesis.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;p&gt;In Figure &lt;a href=&#34;#fig:testfig&#34;&gt;6&lt;/a&gt;, the authors seek to answer this question. The whole idea behind this setup is to allow the particle to diffuse in an environment where the changes in &lt;span class=&#34;math inline&#34;&gt;\(D\)&lt;/span&gt; are explicitly &lt;em&gt;known&lt;/em&gt;. To manifest this, the authors create an apparatus to observe the motion of a bead diffusing near a wall. The wall influences the diffusion in the perpendicular direction, but not horizontal, meaning these two components can be decomposed and compared. From both theoretical and experimental setups, it is well established that the diffusivity decreases with the distance &lt;span class=&#34;math inline&#34;&gt;\(z\)&lt;/span&gt; to the surface due to hydrodynamic effects, and is given by
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+D_\perp \sim D_0 \left(\frac{6z^2+2az}{6z^2+9az+2a^2} \right),
+\end{equation}\]&lt;/span&gt;
+where &lt;span class=&#34;math inline&#34;&gt;\(D_0\)&lt;/span&gt; is the diffusivity with no confinement and &lt;span class=&#34;math inline&#34;&gt;\(a\)&lt;/span&gt; is the particle radius. Although diffusion in the direction parallel to the wall is seen to be affected, it fluctuates much less than in the perpendicular direction. Moreover, at interactions of this scale, both gravity and electrostatic forces must be accounted for as well, which we will just bake in to some potential &lt;span class=&#34;math inline&#34;&gt;\(U(z)\)&lt;/span&gt;. With this known, we can write down (a discretized) SDE that tells us the change in the height &lt;span class=&#34;math inline&#34;&gt;\(z\)&lt;/span&gt;:
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+\Delta z \approx \left \{\partial_z D_\perp(z) - D_\perp(z)U&amp;#39;(z)/k_B T \right\}\Delta t + \sqrt{2D_\perp(z)}\xi,
+\end{equation}\]&lt;/span&gt;
+where &lt;span class=&#34;math inline&#34;&gt;\(\xi\)&lt;/span&gt; is just a white noise term, the first &lt;span class=&#34;math inline&#34;&gt;\(D_\perp\)&lt;/span&gt; term is due to diffusive drift, and the second accounts for the gravitational and electrostatic forces.&lt;/p&gt;
+&lt;p&gt;Ultimately, from their test, they conclude that if samples are taken faster than some critical time interval, so &lt;span class=&#34;math inline&#34;&gt;\(\Delta t &amp;lt; \Delta t_c\)&lt;/span&gt;, then fluctuations in the diffusivity &lt;span class=&#34;math inline&#34;&gt;\(D\)&lt;/span&gt; dominate, and the predictions made by the diffusivity diffusivity hypothesis are seen: the displacements are non-Gaussian, yet the MSD grows linearly. However, over longer times &lt;span class=&#34;math inline&#34;&gt;\(\Delta t &amp;gt; \Delta t_c\)&lt;/span&gt;, the potential (describing the gravitational and electrostatic forces) dominate, and the fluctuations in &lt;span class=&#34;math inline&#34;&gt;\(D\)&lt;/span&gt; get washed out. Therefore, these experiments provide evidence that at least in certain scenarios, the diffusing diffusivity explanation does indeed explain the observed statistics.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div id=&#34;conclusion&#34; class=&#34;section level1&#34;&gt;
+&lt;h1&gt;Conclusion&lt;/h1&gt;
+&lt;p&gt;The idea that particles in complex media don’t behave the way classical stochastic processes predict is a modern research paradigm, of which this issue of non-Gaussian diffusion is central. These mathematical approaches elegantly pin down &lt;em&gt;coarse grained&lt;/em&gt; descriptions of possible behaviors that match experiments nicely. These theories are further strengthened by the predictions confirmed with the near-wall experiments. However, I’m still a little dissatisfied with the state of this question and think a lot of work will be done in this direction in the future. For one, there really are no mechanisms of how the environment would dictate &lt;span class=&#34;math inline&#34;&gt;\(D(t)\)&lt;/span&gt;. Of course, this is easier said than done for a &lt;em&gt;complex&lt;/em&gt; environment, but until then: these are just models that broadly &lt;em&gt;summarize&lt;/em&gt; the motion, rather than precisely describe it. Moreover, I suspect that these subtleties exist because of how we are measuring motion. The MSD is a classical tool that has been applied to a wide variety of problems, but ultimately, is problematic for this very reason: many processes produce the same MSD curve. I am curious about whether more advanced single particle statistics approaches (say, fancy Bayesian stuff) will make this research somewhat obsolete by doing a better job distinguishing different motions by assessing fundamentally different statistics.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class=&#34;footnotes&#34;&gt;
+&lt;hr /&gt;
+&lt;ol&gt;
+&lt;li id=&#34;fn1&#34;&gt;&lt;p&gt;much of the content in this post is taken from (great) slides by Mykyta Chubynsky &lt;a href=&#34;http://chubynsky.info/pres/oth13.pdf&#34;&gt;&lt;i class=&#34;fa fa-file-pdf-o fa-1x&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;a href=&#34;#fnref1&#34; class=&#34;footnote-back&#34;&gt;↩&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;
+&lt;li id=&#34;fn2&#34;&gt;&lt;p&gt;B. Wang et al., PNAS (2009) &lt;a href=&#34;http://www.pnas.org/content/106/36/15160.abstract&#34;&gt;&lt;i class=&#34;fa fa-external-link fa-1x&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;a href=&#34;#fnref2&#34; class=&#34;footnote-back&#34;&gt;↩&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;
+&lt;li id=&#34;fn3&#34;&gt;&lt;p&gt;A. V. Chechkin et al., Phys. Rev. X (2017) &lt;a href=&#34;https://journals.aps.org/prx/abstract/10.1103/PhysRevX.7.021002&#34;&gt;&lt;i class=&#34;fa fa-external-link fa-1x&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;br&gt; M.V. Chubynsky and G.W. Slater, Phys. Rev. Lett. (2014) &lt;a href=&#34;https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.113.098302&#34;&gt;&lt;i class=&#34;fa fa-external-link fa-1x&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;br&gt; Y. Lanoiselée, D. S. Grebenkov, arXiv:&lt;span style=&#34;font-family:Roboto Mono;&#34;&gt;1711.09588&lt;/span&gt; &lt;a href=&#34;https://arxiv.org/abs/1711.09588&#34;&gt;&lt;i class=&#34;fa fa-external-link fa-1x&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;a href=&#34;#fnref3&#34; class=&#34;footnote-back&#34;&gt;↩&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;
+&lt;li id=&#34;fn4&#34;&gt;&lt;p&gt;M. Matse et al., Phys. Rev. E (2017) &lt;a href=&#34;https://journals.aps.org/pre/abstract/10.1103/PhysRevE.96.042604&#34;&gt;&lt;i class=&#34;fa fa-external-link fa-1x&#34;&gt;&lt;/i&gt;&lt;/a&gt; &lt;a href=&#34;#fnref4&#34; class=&#34;footnote-back&#34;&gt;↩&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;
+&lt;/ol&gt;
+&lt;/div&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Analysis of non-processive molecular motor transport using renewal reward theory</title>
+      <link>http://www.math.utah.edu/~miles/publication/nonprocessrenewal/</link>
+      <pubDate>Wed, 15 Nov 2017 00:00:00 +0000</pubDate>
+      
+      <guid>http://www.math.utah.edu/~miles/publication/nonprocessrenewal/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Stochastic limits, part 2: tails, memory, and the Joseph and Noah effects</title>
+      <link>http://www.math.utah.edu/~miles/post/stoch-lim-part-2/</link>
+      <pubDate>Fri, 10 Nov 2017 00:00:00 +0000</pubDate>
+      
+      <guid>http://www.math.utah.edu/~miles/post/stoch-lim-part-2/</guid>
+      <description>&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/htmlwidgets/htmlwidgets.js&#34;&gt;&lt;/script&gt;
+&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/pymjs/pym.v1.js&#34;&gt;&lt;/script&gt;
+&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/widgetframe-binding/widgetframe.js&#34;&gt;&lt;/script&gt;
+
+
+&lt;p&gt;In the &lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/post/stoch-lim-part-1/&#34;&gt;last post&lt;/a&gt;, we discussed what happens to the sum
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+\lim_{N\to\infty} S_N - \mu N, \qquad S_N := \sum_{i=1}^{N} X_i,
+\end{equation}\]&lt;/span&gt;
+with &lt;span class=&#34;math inline&#34;&gt;\(X_i\)&lt;/span&gt; drawn from some “nice” distribution with &lt;span class=&#34;math inline&#34;&gt;\(\mu := \mathbb{E}[X_i]\)&lt;/span&gt;. In this scenario, &lt;span class=&#34;math inline&#34;&gt;\(\mathbf{S}_N(t) \to \mathbf{B}(t)\)&lt;/span&gt;, Brownian motion. For this discussion, we’ll have to state a little more explicitly what we mean by “nice.” The two big features we needed are&lt;/p&gt;
+&lt;ol style=&#34;list-style-type: decimal&#34;&gt;
+&lt;li&gt;finite (first two) moments, i.e. &lt;span class=&#34;math inline&#34;&gt;\(\mathbb{E}[X], \mathbb{V}[X] &amp;lt; \infty\)&lt;/span&gt;,&lt;/li&gt;
+&lt;li&gt;independence, i.e. &lt;span class=&#34;math inline&#34;&gt;\(\mathbb{P}(X_i = x_i, X_j = x_j) = \mathbb{P}(X_i = x_i)\mathbb{P}(X_j = x_j)\)&lt;/span&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;With these in mind, it’s somewhat intuitive the limiting object is Brownian: a process with Gaussian, independent increments. However, we can now ask, what if we break one (or all) of these assumptions? Should we expect &lt;em&gt;any&lt;/em&gt; limiting object? If one does exist, should we expect independent increments if we’re building an object out of non-independent things?&lt;/p&gt;
+&lt;div id=&#34;simulations&#34; class=&#34;section level2&#34;&gt;
+&lt;h2&gt;Simulations&lt;/h2&gt;
+&lt;p&gt;As with most mathematical questions, I think a sane first step is to do some caveman simulations. To do these, a little bit of insight is necessary. What is a particular distribution with infinite moments? A great case-study for use here is the &lt;em&gt;Pareto distribution&lt;/em&gt;, characterized by its probability density function
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+f_X(x)= \begin{cases} \frac{\alpha x_\mathrm{m}^\alpha}{x^{\alpha+1}} &amp;amp; x \ge x_\mathrm{m}, \\ 0 &amp;amp; x &amp;lt; x_\mathrm{m}, \end{cases} 
+\end{equation}\]&lt;/span&gt;
+where &lt;span class=&#34;math inline&#34;&gt;\(x_m &amp;gt;0\)&lt;/span&gt; is some scale parameter and &lt;span class=&#34;math inline&#34;&gt;\(\alpha&amp;gt;0\)&lt;/span&gt; is some shape parameter. Weirdly, sampling from this distribution isn’t built into the vanilla R distribution, but we can easily define some commands that give us the standard R functionality for a distribution.&lt;/p&gt;
+&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;dpareto &amp;lt;- function(x, xm, alpha) ifelse(x &amp;gt; xm , alpha*xm**alpha/(x**(alpha+1)), 0)
+ppareto &amp;lt;- function(q, xm, alpha) ifelse(q &amp;gt; xm , 1 - (xm/q)**alpha, 0 )
+qpareto &amp;lt;- function(p, xm, alpha) ifelse(p &amp;lt; 0 | p &amp;gt; 1, NaN, xm*(1-p)**(-1/alpha))
+rpareto &amp;lt;- function(n, xm, alpha) qpareto(runif(n), xm, alpha)&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;Here, we’ll just take &lt;span class=&#34;math inline&#34;&gt;\(x_m=1\)&lt;/span&gt; for convenience. The fact that makes the Pareto distribution relevant are its first two moments, first the mean
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+\mathbb{E}[X] = \begin{cases} \infty &amp;amp; \alpha \leq 1 \\ \frac{\alpha}{\alpha-1} &amp;amp; \alpha  &amp;gt; 1, \end{cases}
+\end{equation}\]&lt;/span&gt;
+and variance
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+\mathbb{V}[X] = \begin{cases} \infty &amp;amp; \alpha \leq 2 \\ \frac{\alpha}{(\alpha-1)^2(\alpha-1)} &amp;amp; \alpha  &amp;gt; 2. \end{cases}
+\end{equation}\]&lt;/span&gt;
+Therefore, we have three scenarios of interest:&lt;/p&gt;
+&lt;ol style=&#34;list-style-type: decimal&#34;&gt;
+&lt;li&gt;If &lt;span class=&#34;math inline&#34;&gt;\(\alpha \in (0,1]\)&lt;/span&gt;, then &lt;span class=&#34;math inline&#34;&gt;\(\mathbb{E}[X] = \infty\)&lt;/span&gt; and &lt;span class=&#34;math inline&#34;&gt;\(\mathbb{V}[X] = \infty\)&lt;/span&gt;,&lt;/li&gt;
+&lt;li&gt;if &lt;span class=&#34;math inline&#34;&gt;\(\alpha \in (1,2]\)&lt;/span&gt;, then &lt;span class=&#34;math inline&#34;&gt;\(\mathbb{E}[X] = \infty\)&lt;/span&gt; but &lt;span class=&#34;math inline&#34;&gt;\(\mathbb{V}[X]\)&lt;/span&gt; is finite,&lt;/li&gt;
+&lt;li&gt;if &lt;span class=&#34;math inline&#34;&gt;\(\alpha \in (2,\infty]\)&lt;/span&gt;, both &lt;span class=&#34;math inline&#34;&gt;\(\mathbb{E}[X]\)&lt;/span&gt; and &lt;span class=&#34;math inline&#34;&gt;\(\mathbb{V}[X]\)&lt;/span&gt; are finite.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;With this in mind, we can easily simulate &lt;span class=&#34;math inline&#34;&gt;\(S_N\)&lt;/span&gt; where &lt;span class=&#34;math inline&#34;&gt;\(X_i\)&lt;/span&gt; is drawn from these three regimes.&lt;/p&gt;
+&lt;div id=&#34;infinite-first-two-moments&#34; class=&#34;section level3&#34;&gt;
+&lt;h3&gt;Infinite first two moments&lt;/h3&gt;
+&lt;div class=&#34;figure&#34;&gt;&lt;span id=&#34;fig:fig3&#34;&gt;&lt;/span&gt;
+&lt;div id=&#34;htmlwidget-1&#34; style=&#34;width:100%;height:350px;&#34; class=&#34;widgetframe html-widget&#34;&gt;&lt;/div&gt;
+&lt;script type=&#34;application/json&#34; data-for=&#34;htmlwidget-1&#34;&gt;{&#34;x&#34;:{&#34;url&#34;:&#34;/~miles/post/2017-11-08-stoch-lim-part2_files/figure-html//widgets/widget_fig3.html&#34;,&#34;options&#34;:{&#34;xdomain&#34;:&#34;*&#34;,&#34;allowfullscreen&#34;:false,&#34;lazyload&#34;:false}},&#34;evals&#34;:[],&#34;jsHooks&#34;:[]}&lt;/script&gt;
+&lt;p class=&#34;caption&#34;&gt;
+Figure 1: &lt;span class=&#34;math inline&#34;&gt;\(S_n\)&lt;/span&gt; for &lt;span class=&#34;math inline&#34;&gt;\(1 \leq n \leq N\)&lt;/span&gt; with &lt;span class=&#34;math inline&#34;&gt;\(X_n \sim \text{pareto}(0,0.25)\)&lt;/span&gt;.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div id=&#34;finite-mean-infinite-variance&#34; class=&#34;section level3&#34;&gt;
+&lt;h3&gt;Finite mean, infinite variance&lt;/h3&gt;
+&lt;div class=&#34;figure&#34;&gt;&lt;span id=&#34;fig:fig4&#34;&gt;&lt;/span&gt;
+&lt;div id=&#34;htmlwidget-2&#34; style=&#34;width:100%;height:350px;&#34; class=&#34;widgetframe html-widget&#34;&gt;&lt;/div&gt;
+&lt;script type=&#34;application/json&#34; data-for=&#34;htmlwidget-2&#34;&gt;{&#34;x&#34;:{&#34;url&#34;:&#34;/~miles/post/2017-11-08-stoch-lim-part2_files/figure-html//widgets/widget_fig4.html&#34;,&#34;options&#34;:{&#34;xdomain&#34;:&#34;*&#34;,&#34;allowfullscreen&#34;:false,&#34;lazyload&#34;:false}},&#34;evals&#34;:[],&#34;jsHooks&#34;:[]}&lt;/script&gt;
+&lt;p class=&#34;caption&#34;&gt;
+Figure 2: &lt;span class=&#34;math inline&#34;&gt;\(S_n\)&lt;/span&gt; for &lt;span class=&#34;math inline&#34;&gt;\(1 \leq n \leq N\)&lt;/span&gt; with &lt;span class=&#34;math inline&#34;&gt;\(X_n \sim \text{pareto}(0,1.1)\)&lt;/span&gt;.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div id=&#34;finite-mean-and-variance&#34; class=&#34;section level3&#34;&gt;
+&lt;h3&gt;Finite mean and variance&lt;/h3&gt;
+&lt;div class=&#34;figure&#34;&gt;&lt;span id=&#34;fig:fig5&#34;&gt;&lt;/span&gt;
+&lt;div id=&#34;htmlwidget-3&#34; style=&#34;width:100%;height:350px;&#34; class=&#34;widgetframe html-widget&#34;&gt;&lt;/div&gt;
+&lt;script type=&#34;application/json&#34; data-for=&#34;htmlwidget-3&#34;&gt;{&#34;x&#34;:{&#34;url&#34;:&#34;/~miles/post/2017-11-08-stoch-lim-part2_files/figure-html//widgets/widget_fig5.html&#34;,&#34;options&#34;:{&#34;xdomain&#34;:&#34;*&#34;,&#34;allowfullscreen&#34;:false,&#34;lazyload&#34;:false}},&#34;evals&#34;:[],&#34;jsHooks&#34;:[]}&lt;/script&gt;
+&lt;p class=&#34;caption&#34;&gt;
+Figure 3: &lt;span class=&#34;math inline&#34;&gt;\(S_n\)&lt;/span&gt; for &lt;span class=&#34;math inline&#34;&gt;\(1 \leq n \leq N\)&lt;/span&gt; with &lt;span class=&#34;math inline&#34;&gt;\(X_n \sim \text{pareto}(0,2.5)\)&lt;/span&gt;.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;p&gt;From this, we gain a bit of intuition. In the case where
+both moments are infinite (Figure &lt;a href=&#34;#fig:fig3&#34;&gt;1&lt;/a&gt;) that the
+process is in some sense &lt;em&gt;unstable&lt;/em&gt;, in that huge, fairly common jumps continue to cause
+the process to blow up. In Figure &lt;a href=&#34;#fig:fig4&#34;&gt;2&lt;/a&gt;, if we make the mean finite,
+things get a little more predictable: jumps still occur but the magnitude is not
+huge previous to previous values. Finally, in Figure &lt;a href=&#34;#fig:fig5&#34;&gt;3&lt;/a&gt;, with two
+finite moments, things smooth out and we get back the scenario discussed in the last post.&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div id=&#34;relaxing-independence&#34; class=&#34;section level2&#34;&gt;
+&lt;h2&gt;Relaxing independence&lt;/h2&gt;
+&lt;p&gt;How do we simulate a process where each payoff is non-independent? A classical model for this is the autoregressive moving-average (ARMA)
+process, described by the relation
+&lt;span class=&#34;math display&#34; id=&#34;eq:ARMA&#34;&gt;\[\begin{equation}
+X_k := (1-\gamma)X_{k-1} + \gamma U_k,
+\tag{1}
+\end{equation}\]&lt;/span&gt;
+where &lt;span class=&#34;math inline&#34;&gt;\(U_k \sim \text{unif}[0,1]\)&lt;/span&gt;. Note that this process does indeed have memory, as the value of &lt;span class=&#34;math inline&#34;&gt;\(X_k\)&lt;/span&gt; is determined
+by the previous value, &lt;span class=&#34;math inline&#34;&gt;\(X_{k-1}\)&lt;/span&gt;. However, we can still define &lt;span class=&#34;math inline&#34;&gt;\(S_N := \sum_{i=1}^{N} X_i\)&lt;/span&gt; and ask, what is the behavior as &lt;span class=&#34;math inline&#34;&gt;\(N\to\infty\)&lt;/span&gt;?
+It was nice to subtract the mean behavior off (which we just saw isn’t always possible), but here, it actually is, by noting that
+taking expectations of &lt;a href=&#34;#eq:ARMA&#34;&gt;(1)&lt;/a&gt;, which yields
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+\mathbb{E}[X] = (1-\gamma)\mathbb{E}[X] + \gamma \mathbb{E}[U],
+\end{equation}\]&lt;/span&gt;
+which yields
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+\mu = \mathbb{E}[X] = \mathbb{E}[U] = \frac{1}{2}.
+\end{equation}\]&lt;/span&gt;
+We can simulate this and subtract off the mean to see what the large &lt;span class=&#34;math inline&#34;&gt;\(N\)&lt;/span&gt; behavior increments.&lt;/p&gt;
+&lt;div class=&#34;figure&#34;&gt;&lt;span id=&#34;fig:fig6&#34;&gt;&lt;/span&gt;
+&lt;div id=&#34;htmlwidget-4&#34; style=&#34;width:100%;height:350px;&#34; class=&#34;widgetframe html-widget&#34;&gt;&lt;/div&gt;
+&lt;script type=&#34;application/json&#34; data-for=&#34;htmlwidget-4&#34;&gt;{&#34;x&#34;:{&#34;url&#34;:&#34;/~miles/post/2017-11-08-stoch-lim-part2_files/figure-html//widgets/widget_fig6.html&#34;,&#34;options&#34;:{&#34;xdomain&#34;:&#34;*&#34;,&#34;allowfullscreen&#34;:false,&#34;lazyload&#34;:false}},&#34;evals&#34;:[],&#34;jsHooks&#34;:[]}&lt;/script&gt;
+&lt;p class=&#34;caption&#34;&gt;
+Figure 4: Net worth &lt;span class=&#34;math inline&#34;&gt;\(S_n - n\mu\)&lt;/span&gt; for &lt;span class=&#34;math inline&#34;&gt;\(1 \leq n \leq N\)&lt;/span&gt; for &lt;span class=&#34;math inline&#34;&gt;\(X_n\)&lt;/span&gt; generated by an ARMA process with &lt;span class=&#34;math inline&#34;&gt;\(\gamma=1/2\)&lt;/span&gt;.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;p&gt;In Figure &lt;a href=&#34;#fig:fig6&#34;&gt;4&lt;/a&gt;, we see a familiar looking limiting object: Brownian motion. This tells us that perhaps, independence is not
+a strict requirement for a FCLT? If it is not, to what extent can we break this assumption?&lt;/p&gt;
+&lt;/div&gt;
+&lt;div id=&#34;biblical-analogies&#34; class=&#34;section level1&#34;&gt;
+&lt;h1&gt;Biblical analogies&lt;/h1&gt;
+&lt;p&gt;Here, we simulated when things go “wrong,” with the classical central limit theorems and it turns out, these ideas have
+(archaic) names that referencing the Bible.&lt;/p&gt;
+&lt;div id=&#34;noah-effect&#34; class=&#34;section level2&#34;&gt;
+&lt;h2&gt;Noah effect&lt;/h2&gt;
+&lt;div class=&#34;figure&#34; style=&#34;text-align: center&#34;&gt;&lt;span id=&#34;fig:noah&#34;&gt;&lt;/span&gt;
+&lt;img src=&#34;http://www.math.utah.edu/~miles/~miles/img/stoch-lim/noah.jpg&#34; alt=&#34;Noah on his ark surviving a statistically rare flood.&#34; width=&#34;80%&#34; /&gt;
+&lt;p class=&#34;caption&#34;&gt;
+Figure 5: Noah on his ark surviving a statistically rare flood.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;p&gt;When we broke the finiteness of our samples, we got monumental jumps. This is what is referred to as a &lt;strong&gt;heavy-tailed&lt;/strong&gt; behavior. That is, large values of &lt;span class=&#34;math inline&#34;&gt;\(X_i\)&lt;/span&gt; (which exist in the tail of the distribution)
+have a significant enough probability that they occasionally occur. This is sometimes referred to as the &lt;strong&gt;Noah effect&lt;/strong&gt;, referencing the
+catstrophic flood encountered, for which Noah built his ark. In that context, the flood was unlike one ever seen before,
+which is exactly the case with events stemming from heavy-tails. While they may be rare enough that one of that magnitude may not have been previously seen,
+this rarity is offset by the extreme magnitude, and these events have a role in the long term behavior.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div id=&#34;joseph-effect&#34; class=&#34;section level2&#34;&gt;
+&lt;h2&gt;Joseph effect&lt;/h2&gt;
+&lt;div class=&#34;figure&#34; style=&#34;text-align: center&#34;&gt;&lt;span id=&#34;fig:sevencows&#34;&gt;&lt;/span&gt;
+&lt;img src=&#34;http://www.math.utah.edu/~miles/~miles/img/stoch-lim/seven-cows.jpg&#34; alt=&#34;Joseph received seven years of prosper and then seven years of famine.&#34; width=&#34;70%&#34; /&gt;
+&lt;p class=&#34;caption&#34;&gt;
+Figure 6: Joseph received seven years of prosper and then seven years of famine.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;p&gt;When we removed the assumption of independence of our samples, events became &lt;strong&gt;correlated&lt;/strong&gt;, as in,
+the system gained a memory. This memory may manifest as perioids of persisting with the same behavior: say, if &lt;span class=&#34;math inline&#34;&gt;\(X_i\)&lt;/span&gt; is positive, maybe &lt;span class=&#34;math inline&#34;&gt;\(X_{i+1}\)&lt;/span&gt; is more likely to
+also be positive. This lends itself to the story of Joseph in the bible. In a prophecy,
+Joseph sees that seven years of abundance will be followed by seven years of famine.
+That is, the behavior is persistent, or more technically, autocorrelated, which is sometimes called the &lt;strong&gt;Joseph effect&lt;/strong&gt;. I’ve also heard this referred to as the “Netflix binge effect,”
+where once you watch an episode, there is a higher probability of continuing than just watching just a single episode.&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div id=&#34;summarized-theory&#34; class=&#34;section level1&#34;&gt;
+&lt;h1&gt;Summarized theory&lt;/h1&gt;
+&lt;div id=&#34;self-similarity-tails&#34; class=&#34;section level2&#34;&gt;
+&lt;h2&gt;Self-similarity &amp;amp; tails&lt;/h2&gt;
+&lt;p&gt;One way to understand the limiting behavior is to characterize the self-similarity of the resulting
+process. A process &lt;span class=&#34;math inline&#34;&gt;\(Z(t)\)&lt;/span&gt; is said to be self-similar if there exists an &lt;span class=&#34;math inline&#34;&gt;\(H&amp;gt;0\)&lt;/span&gt; such that
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+Z(at) = a^H Z(t),
+\end{equation}\]&lt;/span&gt;
+where &lt;span class=&#34;math inline&#34;&gt;\(H\)&lt;/span&gt; is known as the &lt;strong&gt;Hurst parameter&lt;/strong&gt;. Notice that Brownian motion is self-similar with &lt;span class=&#34;math inline&#34;&gt;\(H=1/2\)&lt;/span&gt;. Both the Joseph and
+Noah effects result in growth that is in some sense greater than classical Brownian motion. This manfiests as
+&lt;span class=&#34;math inline&#34;&gt;\(H&amp;gt;1/2\)&lt;/span&gt;, for different underlying reasons. &lt;span class=&#34;math inline&#34;&gt;\(H&amp;lt;1/2\)&lt;/span&gt; actually represents a negative time self-similarity, which may
+occur from say, thinking of &lt;span class=&#34;math inline&#34;&gt;\(Z(t)\)&lt;/span&gt; as a model of arrivals to a doctors office with scheduling to avoid conflicts.&lt;/p&gt;
+&lt;p&gt;To distinguish between these effects, we also want to characterize the tail behavior, or the existence of abnormally large events.
+One way to do so is by a parameter &lt;span class=&#34;math inline&#34;&gt;\(\alpha\)&lt;/span&gt;, corresponding to the relation
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+\mathbb{P}(|X| &amp;gt; t)  \sim C t^{-\alpha}, \qquad \text{ as } t \to \infty.
+\end{equation}\]&lt;/span&gt;
+That is, &lt;span class=&#34;math inline&#34;&gt;\(\alpha\)&lt;/span&gt; effectively measures how quickly the tail of the distribution decays. For &lt;span class=&#34;math inline&#34;&gt;\(\alpha\)&lt;/span&gt; larger, the tail decays faster, killing off
+the possibility of statistically rare large events. For a process with independent increments, it can be shown that &lt;span class=&#34;math inline&#34;&gt;\(H=\alpha^{-1}\)&lt;/span&gt;.
+For Brownian motion, we actually know the exact value of these, which is &lt;span class=&#34;math inline&#34;&gt;\(H=\alpha^{-1}=1/2\)&lt;/span&gt;. For the Noah effect,
+we have independent increments, but the self-similarity and tails are larger than that of classical Brownian motion, so we an characterize
+the Noah effect precisely when &lt;span class=&#34;math inline&#34;&gt;\(H=\alpha^{-1} &amp;gt; 1/2\)&lt;/span&gt;. The Joseph effect alone is when we don’t have long tails, but the self-similarity (or persistence)
+of our process is distinct, so this precisely translates to &lt;span class=&#34;math inline&#34;&gt;\(H &amp;gt; \alpha^{-1}=1/2\)&lt;/span&gt;. We could even fathom an ultimately bad scenario with
+&lt;em&gt;both&lt;/em&gt; the Noah and Joseph effects, which would manifest as &lt;span class=&#34;math inline&#34;&gt;\(H &amp;gt; \alpha^{-1} &amp;gt; 1/2\)&lt;/span&gt;.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div id=&#34;convergence-to-a-levy-process&#34; class=&#34;section level2&#34;&gt;
+&lt;h2&gt;Convergence to a Lévy process&lt;/h2&gt;
+&lt;p&gt;The rigorous requirements for convergence are too long and annoying to include here, but hopefully unsurprisingly they relate to &lt;span class=&#34;math inline&#34;&gt;\(H\)&lt;/span&gt; and &lt;span class=&#34;math inline&#34;&gt;\(\alpha\)&lt;/span&gt;. Again, we can consider
+making our sum some functional by “connecting the dots,”
+&lt;span class=&#34;math display&#34; id=&#34;eq:Sndef&#34;&gt;\[\begin{equation}
+\mathbf{S}_N(t) := c_N^{-1/2}\left(S_{\lfloor Nt \rfloor} - \mu \lfloor N t \rfloor\right), \quad t\in[0,1].
+\tag{2}
+\end{equation}\]&lt;/span&gt;
+Then, under some technical conditions
+&lt;span class=&#34;math display&#34; id=&#34;eq:FCLTS&#34;&gt;\[\begin{equation}
+\mathbf{S}_N(t) \rightarrow \sigma \mathbf{S}(t), \quad \text{ as } N\to\infty, \tag{3}
+\end{equation}\]&lt;/span&gt;
+where &lt;span class=&#34;math inline&#34;&gt;\(\mathbf{S}(t)\)&lt;/span&gt; is a standard &lt;span class=&#34;math inline&#34;&gt;\((\alpha,\beta)\)&lt;/span&gt;-stable Lévy motion, distributed by
+&lt;span class=&#34;math display&#34; id=&#34;eq:Sdist&#34;&gt;\[\begin{equation}
+\mathbf{S}(t) \sim t^{1/\alpha} S_\alpha (1,\beta,0) = S_\alpha(t^{1/\alpha}, \beta,0).  \tag{4}
+\end{equation}\]&lt;/span&gt;
+Right away, in &lt;a href=&#34;#eq:Sdist&#34;&gt;(4)&lt;/a&gt;, we see that a self-similarity appears, characterized by &lt;span class=&#34;math inline&#34;&gt;\(\alpha\)&lt;/span&gt;. When &lt;span class=&#34;math inline&#34;&gt;\(\alpha=2\)&lt;/span&gt;, the stable Lévy is simply Brownian motion.
+However, when &lt;span class=&#34;math inline&#34;&gt;\(\alpha &amp;lt;2\)&lt;/span&gt;, this can be thought of as a &lt;em&gt;jump process&lt;/em&gt;, which looks a lot like Brownian motion just with
+non-zero mean increments. For &lt;span class=&#34;math inline&#34;&gt;\(0 &amp;lt; \alpha &amp;lt; 1\)&lt;/span&gt;, paths grow at a reasonable rate, whereas &lt;span class=&#34;math inline&#34;&gt;\(1 &amp;lt; \alpha &amp;lt;2\)&lt;/span&gt;, jumps become unbounded in variance. For &lt;span class=&#34;math inline&#34;&gt;\(\alpha &amp;gt; 2\)&lt;/span&gt;, the motion
+is no longer stable and blows up in finite time.
+Hence, we can immediately see this characterizes the different scenarios of the Pareto distribution.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div id=&#34;convergence-to-fractional-brownian-motion-fbm&#34; class=&#34;section level2&#34;&gt;
+&lt;h2&gt;Convergence to Fractional Brownian Motion (FBM)&lt;/h2&gt;
+&lt;p&gt;We need a way to generally characterize the non-independence of &lt;span class=&#34;math inline&#34;&gt;\(X_i\)&lt;/span&gt;, which we can do supposing that it has the representation
+&lt;span class=&#34;math display&#34; id=&#34;eq:lin1&#34;&gt;\[\begin{equation}
+X_i = \sum_{j=0}^{\infty} a_j Y_{i-j}, \qquad Y_j \sim \mathcal{N}(0,1). 
+\tag{5}
+\end{equation}\]&lt;/span&gt;
+Then, suppose the weights satisfy
+&lt;span class=&#34;math display&#34; id=&#34;eq:lin2&#34;&gt;\[\begin{equation}
+\sum_{j=0}^{\infty} a_j &amp;lt; \infty. 
+\tag{6}
+\end{equation}\]&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;Then, if &lt;a href=&#34;#eq:lin1&#34;&gt;(5)&lt;/a&gt; and &lt;a href=&#34;#eq:lin2&#34;&gt;(6)&lt;/a&gt; are satisfied, then it can be shown that &lt;span class=&#34;math inline&#34;&gt;\(\mathbb{V}[X_n] &amp;lt; \infty\)&lt;/span&gt;.
+In this case, yet again define &lt;span class=&#34;math inline&#34;&gt;\(\mathbf{S}_N\)&lt;/span&gt; as in &lt;a href=&#34;#eq:Sndef&#34;&gt;(2)&lt;/a&gt;, and suppose that &lt;span class=&#34;math inline&#34;&gt;\(\mathbb{V}[S_n]\sim n^{2H}\)&lt;/span&gt;. Then, we can state the FCLT for this case as
+Then, under some technical conditions
+&lt;span class=&#34;math display&#34; id=&#34;eq:FCLTfrac&#34;&gt;\[\begin{equation}
+\mathbf{S}_N(t) \rightarrow \sigma \mathbf{Z}_H(t), \quad \text{ as } N\to\infty, \tag{7}
+\end{equation}\]&lt;/span&gt;
+where &lt;span class=&#34;math inline&#34;&gt;\(\mathbf{Z}_H(t)\)&lt;/span&gt; is fractional Brownian motion, which still is a Gaussian process, but with covariance structure
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+\text{covar}[\mathbf{Z}_H(t), \mathbf{Z}_H(\tau)] = \frac{1}{2}[t^{2H} + \tau^{2H} - (t-\tau)^{2H}].
+\end{equation}\]&lt;/span&gt;
+Recall that if &lt;span class=&#34;math inline&#34;&gt;\(H=1/2\)&lt;/span&gt; as with Brownian motion, the two different times &lt;span class=&#34;math inline&#34;&gt;\(t,\tau\)&lt;/span&gt; are uncorrelated. However, for any other value of &lt;span class=&#34;math inline&#34;&gt;\(H\)&lt;/span&gt;, the
+times are correlated, meaning that there is either positive persistence (things stay the same) or negatively correlated
+(things are likely to change). This is, in essence, the Joseph effect.&lt;/p&gt;
+&lt;div id=&#34;heavy-tails-plus-dependence&#34; class=&#34;section level3&#34;&gt;
+&lt;h3&gt;Heavy tails plus dependence&lt;/h3&gt;
+&lt;p&gt;There has been a significant body of work showing that even when you combine these two effects, you still (surprisingly) can get a limiting process. I’ll omit the details here but briefly mention that
+depending on the conditions, you get a pretty exotic fractional Lévy process.&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div id=&#34;conclusion&#34; class=&#34;section level1&#34;&gt;
+&lt;h1&gt;Conclusion&lt;/h1&gt;
+&lt;p&gt;The landscape of stochastic processes can be very daunting. However, limiting behavior provides
+a concrete and beautiful way of categorizing their behavior. The most classical case deals with when everything goes &lt;em&gt;right&lt;/em&gt;. Suppose we take the nicest samples possible: independent, finite samples and use these as our building blocks.
+This is the realm of the ever-powerful Central Limit Theorem (CLT). Beyond this, we were able to articulate Donsker’s theorem, or the Functional Central Limit Theorem (FCLT),
+which provides convergence to Brownian motion and provides the Gaussian structure of the classical CLT.&lt;/p&gt;
+&lt;p&gt;Deviations from the assumptions of independence and finite moments lead us to two other classical stochastic processes, each of which embodies the
+aspect of these assumptions we “break.” If we remove the requirement that the moments of our increments are finite, this leads
+to large jumps, and the limiting behavior is the classical jump process, a &lt;em&gt;Lévy motion&lt;/em&gt;. If we remove independence, this inherently
+adds a memory effect to our system, and we get out the classical model of a process with correlations, &lt;em&gt;fractional Brownian motion&lt;/em&gt;.
+For me, these processes have counterintuitive, esoteric descriptions, but when we “build” them from scratch by specifying their increments, I think their behavior
+is far more digestable.&lt;/p&gt;
+&lt;/div&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Stenger&#39;s &#34;Proof&#34;?</title>
+      <link>http://www.math.utah.edu/~miles/post/stenger-proof/</link>
+      <pubDate>Wed, 01 Nov 2017 00:00:00 +0000</pubDate>
+      
+      <guid>http://www.math.utah.edu/~miles/post/stenger-proof/</guid>
+      <description>&lt;p&gt;This week, I attended a talk at the &lt;a href=&#34;http://www.math.utah.edu/applied-math/seminar/&#34;&gt;applied math seminar&lt;/a&gt;, given by &lt;a href=&#34;http://www.cs.utah.edu/~stenger/&#34;&gt;Frank Stenger&lt;/a&gt;. In this talk, Stenger summarized the techniques he used in his proposed proof of the Riemann hypothesis, uploaded to the arXiv &lt;a href=&#34;https://arxiv.org/abs/1708.01209&#34;&gt;in August 2017&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;In brief, the Riemann hypothesis concerns the Riemann zeta function
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+\zeta(s) = \sum_{n=1}^{\infty} n^{-s} = \frac{1}{1^s} + \frac{1}{2^s} + \frac{1}{3^s} + \cdots,
+\end{equation}\]&lt;/span&gt;
+and its zeros, &lt;span class=&#34;math inline&#34;&gt;\(\zeta(s^\star )=0\)&lt;/span&gt;, stating that
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+\Re\{s^\star \} = \frac{1}{2},
+\end{equation}\]&lt;/span&gt;
+where &lt;span class=&#34;math inline&#34;&gt;\(\Re\left\{\cdot\right\}\)&lt;/span&gt; denotes the real component. That is, all the zeros of &lt;span class=&#34;math inline&#34;&gt;\(\zeta(s)\)&lt;/span&gt; live on the &lt;em&gt;critical line&lt;/em&gt; parameterized by &lt;span class=&#34;math inline&#34;&gt;\(\frac{1}{2}+it\)&lt;/span&gt;. This problem is a &lt;a href=&#34;https://www.claymath.org/millennium-problems/riemann-hypothesis&#34;&gt;Millennium problem&lt;/a&gt;, sponsored by the Clay Institute and associated with a $1 million dollar prize for solving.&lt;/p&gt;
+&lt;p&gt;Stenger’s proof centers around a different function, &lt;span class=&#34;math inline&#34;&gt;\(G(z)\)&lt;/span&gt;, defined by
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+G(z) := \int_{\mathbb{R}^+} \frac{\xi^{z-1}}{e^{\xi}+1} \, \mathrm{d} \xi,
+\end{equation}\]&lt;/span&gt;
+which is related to the &lt;em&gt;Mellin transform&lt;/em&gt; of the zeta function, and is known to share the same zeros in the strip &lt;span class=&#34;math inline&#34;&gt;\(\{z \in \mathbb{C}: 0 &amp;lt; \Re z &amp;lt; 1\}\)&lt;/span&gt;. Stenger’s proof uses Fourier analysis to study the analyticity of the function &lt;span class=&#34;math inline&#34;&gt;\(G\)&lt;/span&gt; and ultimately conclude the Riemann hypothesis.&lt;/p&gt;
+&lt;p&gt;Stenger’s proof, and the Riemann hypothesis are &lt;em&gt;way&lt;/em&gt; out of my area of expertise, so I don’t have any ability to comment on the correctness, but the &lt;strong&gt;response&lt;/strong&gt; to the proof is what surprised me, and is what I wanted to write about. Stenger gave the talk on Monday in hopes of receiving feedback. He disclosed that his reason for giving the talk was because he wanted to hear about any mistakes. However, after a few general questions, crickets stood in place of audience critiques. This seems to be the exact same reaction in the online community to his proof, but &lt;em&gt;why&lt;/em&gt;?&lt;/p&gt;
+&lt;p&gt;When someone (especially with a reputation of being a legitimate researcher, such as Stenger, who has 200+ papers) claims to solve a famous problem, the internet tends to clamor about it. For instance, &lt;a href=&#34;https://www.reddit.com/r/programming/comments/6tp3f0/a_solution_of_the_p_versus_np_problem/&#34;&gt;this&lt;/a&gt; reddit thread has over 700 responses to a proposed proof of P vs NP, a problem from computer science roughly analogous in fame to the Riemann hypothesis. Interestingly, experts in the field quickly read the paper and &lt;a href=&#34;https://cstheory.stackexchange.com/questions/38803/is-norbert-blums-2017-proof-that-p-ne-np-correct/38811#38811&#34;&gt;identified its flaws&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;This type of response also applies to previous attempts at the Riemann hypothesis. &lt;a href=&#34;https://www.math.columbia.edu/~woit/wordpress/?p=707&#34;&gt;This&lt;/a&gt; blog post outlines a preprint claiming the proof in 2008, along with the shortcomings. In fact, there exists a &lt;a href=&#34;https://empslocal.ex.ac.uk/people/staff/mrwatkin/zeta/RHproofs.htm&#34;&gt;collection&lt;/a&gt; of failed attempts at the problem.&lt;/p&gt;
+&lt;p&gt;Admittedly, Stenger’s proof looks to me to be elementary relative to these past attempts and progress in this field. However, if it is indeed obviously incorrect, wouldn’t it be a quick identification and explanation? Every Google search I can think of turns up no discussion whatsoever of his paper, so &lt;strong&gt;why is no one talking about this?&lt;/strong&gt; At the time of this post, there seems to be nothing, and I’m pretty baffled as to why.&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Stochastic limits, part 1: CLT,  Donsker’s FCLT</title>
+      <link>http://www.math.utah.edu/~miles/post/stoch-lim-part-1/</link>
+      <pubDate>Sat, 21 Oct 2017 00:00:00 +0000</pubDate>
+      
+      <guid>http://www.math.utah.edu/~miles/post/stoch-lim-part-1/</guid>
+      <description>&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/htmlwidgets/htmlwidgets.js&#34;&gt;&lt;/script&gt;
+&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/pymjs/pym.v1.js&#34;&gt;&lt;/script&gt;
+&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/widgetframe-binding/widgetframe.js&#34;&gt;&lt;/script&gt;
+
+
+&lt;p&gt;In the ever-growing list of talks I’ve suffered through, I’ve noticed a bizarre trend in many given by mathematicians considered “rockstars”: half the talk consists of rambling about old, obscure books in their field. I’m honestly not sure if this is simply because they can get away with it because they’re already famous, or because arcane tomes are a genuinely good source of information. I’m operating under the latter assumption. This post (and likely a large portion of the blog) will consist of me babbling about books I’m currently working through.&lt;/p&gt;
+&lt;p&gt;The first book on the agenda is on stochastic limits, by Whitt.&lt;/p&gt;
+&lt;p&gt;&lt;img width=250px src=&#34;http://www.math.utah.edu/~miles/~miles/img/stoch-lim/wittbook.jpg&#34; alt=&#34;Whitt&#39;s book&#34;/&gt;&lt;/p&gt;
+&lt;p&gt;This book isn’t really old (circa 2002) or obscure, but I had recently falsely hoped to use a result in it for a paper and couldn’t, so it seemed like a perfect candidate to blog about. A big theme of the book, which I love, is how do we make sense of randomness? Answer: by seeing enough of it to discern a structure. The second big point, which is a little more subtle, is that, in the long run, many underlying details don’t matter. That is, we’ll see that large families of distributions with similar properties ultimately look “the same” in some sense. In this post, I’ll go over the most standard case, which basically is when everything goes “right.” This is the setup I was most familiar with, but is necessary to establish when/how things can go wrong (which is more interesting, and will be covered in the next post).&lt;/p&gt;
+&lt;div id=&#34;a-game-of-chance&#34; class=&#34;section level1&#34;&gt;
+&lt;h1&gt;A game of chance&lt;/h1&gt;
+&lt;p&gt;Consider a simple game, where at the &lt;span class=&#34;math inline&#34;&gt;\(n\)&lt;/span&gt;th round, you receive payoff &lt;span class=&#34;math inline&#34;&gt;\(X_n\)&lt;/span&gt;. Then, after &lt;span class=&#34;math inline&#34;&gt;\(N\)&lt;/span&gt; rounds, the total payoff is just the sum &lt;span class=&#34;math inline&#34;&gt;\(S_N\)&lt;/span&gt; defined by
+&lt;span class=&#34;math display&#34;&gt;\[ S_N := X_1 + X_2 + \cdots + X_N = \sum_{n=1}^{N} X_n.\]&lt;/span&gt;
+Just like my actual casino experiences, we’re going to play this game &lt;em&gt;a lot&lt;/em&gt;, maybe because we’ve already lost a ton of money playing a different game. This corresponds to taking the limit &lt;span class=&#34;math inline&#34;&gt;\(N\to\infty\)&lt;/span&gt; and trying to understand the behavior of &lt;span class=&#34;math inline&#34;&gt;\(S_N\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;We’ll first consider the most simple scenario, where the payoff you receive is uniformly distributed between &lt;span class=&#34;math inline&#34;&gt;\(0\)&lt;/span&gt; and &lt;span class=&#34;math inline&#34;&gt;\(1\)&lt;/span&gt;, so &lt;span class=&#34;math inline&#34;&gt;\(X_n \sim \text{unif}(0,1)\)&lt;/span&gt;. We can see the results of this for different values of &lt;span class=&#34;math inline&#34;&gt;\(N\)&lt;/span&gt; in Figure &lt;a href=&#34;#fig:fig1&#34;&gt;1&lt;/a&gt;.&lt;/p&gt;
+&lt;div class=&#34;figure&#34;&gt;&lt;span id=&#34;fig:fig1&#34;&gt;&lt;/span&gt;
+&lt;div id=&#34;htmlwidget-1&#34; style=&#34;width:100%;height:450px;&#34; class=&#34;widgetframe html-widget&#34;&gt;&lt;/div&gt;
+&lt;script type=&#34;application/json&#34; data-for=&#34;htmlwidget-1&#34;&gt;{&#34;x&#34;:{&#34;url&#34;:&#34;/~miles/post/2017-10-21-stoch-lim-part-1_files/figure-html//widgets/widget_fig1.html&#34;,&#34;options&#34;:{&#34;xdomain&#34;:&#34;*&#34;,&#34;allowfullscreen&#34;:false,&#34;lazyload&#34;:false}},&#34;evals&#34;:[],&#34;jsHooks&#34;:[]}&lt;/script&gt;
+&lt;p class=&#34;caption&#34;&gt;
+Figure 1: Cumulative sums &lt;span class=&#34;math inline&#34;&gt;\(S_n\)&lt;/span&gt; for &lt;span class=&#34;math inline&#34;&gt;\(1 \leq n \leq N\)&lt;/span&gt; with &lt;span class=&#34;math inline&#34;&gt;\(X_n \sim \text{unif}(0,1)\)&lt;/span&gt;.
+&lt;/p&gt;
+&lt;/div&gt;
+What do we learn from this? The result isn’t terribly surprising or interesting: as &lt;span class=&#34;math inline&#34;&gt;\(N\)&lt;/span&gt; gets large, then &lt;span class=&#34;math inline&#34;&gt;\(S_n\)&lt;/span&gt; approaches a line with slope &lt;span class=&#34;math inline&#34;&gt;\(m=1/2\)&lt;/span&gt;. Where does this &lt;span class=&#34;math inline&#34;&gt;\(1/2\)&lt;/span&gt; come from? It’s simply the mean payoff at each round,
+&lt;span class=&#34;math display&#34;&gt;\[
+\mathbb{E}[X_i] = 1/2, \qquad X_i \sim \text{unif}(0,1).
+\]&lt;/span&gt;
+We can make the game a little more interesting. Since we know that, on average, you win &lt;span class=&#34;math inline&#34;&gt;\(1/2\)&lt;/span&gt; each round, we can make this the cost of playing. We can then look at the net winnings, described by the quantity
+&lt;span class=&#34;math display&#34;&gt;\[
+S_n - \frac{1}{2}n, \qquad S_n := X_1 + \cdots + X_n,
+\]&lt;/span&gt;
+where the natural generalization of this for different games is
+&lt;span class=&#34;math display&#34;&gt;\[
+S_n - \mu n, \qquad \mu := \mathbb{E}[X_i].
+\]&lt;/span&gt;
+We then plot the net payoff of the same game
+&lt;div class=&#34;figure&#34;&gt;&lt;span id=&#34;fig:fig2&#34;&gt;&lt;/span&gt;
+&lt;div id=&#34;htmlwidget-2&#34; style=&#34;width:100%;height:450px;&#34; class=&#34;widgetframe html-widget&#34;&gt;&lt;/div&gt;
+&lt;script type=&#34;application/json&#34; data-for=&#34;htmlwidget-2&#34;&gt;{&#34;x&#34;:{&#34;url&#34;:&#34;/~miles/post/2017-10-21-stoch-lim-part-1_files/figure-html//widgets/widget_fig2.html&#34;,&#34;options&#34;:{&#34;xdomain&#34;:&#34;*&#34;,&#34;allowfullscreen&#34;:false,&#34;lazyload&#34;:false}},&#34;evals&#34;:[],&#34;jsHooks&#34;:[]}&lt;/script&gt;
+&lt;p class=&#34;caption&#34;&gt;
+Figure 2: Net worth &lt;span class=&#34;math inline&#34;&gt;\(S_n - n\mu\)&lt;/span&gt; for &lt;span class=&#34;math inline&#34;&gt;\(1 \leq n \leq N\)&lt;/span&gt; with &lt;span class=&#34;math inline&#34;&gt;\(X_n \sim \text{unif}(0,1)\)&lt;/span&gt;.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;div id=&#34;central-limit-theorem&#34; class=&#34;section level2&#34;&gt;
+&lt;h2&gt;Central Limit Theorem&lt;/h2&gt;
+&lt;p&gt;Because we’re looking at a collection of discrete objects here, there is a straightforward explanation for the behavior we’re seeing: the classical Central limit theorem (CLT). The statement of CLT that is probably most familiar to most is for &lt;span class=&#34;math inline&#34;&gt;\(X_i\)&lt;/span&gt; with mean &lt;span class=&#34;math inline&#34;&gt;\(\mu\)&lt;/span&gt; and variance &lt;span class=&#34;math inline&#34;&gt;\(\sigma^2\)&lt;/span&gt; respectively,&lt;/p&gt;
+&lt;p&gt;(&lt;span class=&#34;citation&#34;&gt;@foo2&lt;/span&gt;)&lt;span class=&#34;math display&#34;&gt;\[ \label{eq:CLT}
+\lim_{N\to\infty} \sqrt{N} \left \{ \frac{1}{N} \sum_{i=1}^{N}X_i - \mu \right\} \to \mathcal{N}(0,\sigma^2),
+\]&lt;/span&gt;
+where &lt;span class=&#34;math inline&#34;&gt;\(\mathcal{N}(0,\sigma^2)\)&lt;/span&gt; is just the standard normal (Gaussian) distribution with variance &lt;span class=&#34;math inline&#34;&gt;\(\sigma^2\)&lt;/span&gt;. However, if we squint at this equation, we see a remarkable similarity to what we’re studying: we just need to move the &lt;span class=&#34;math inline&#34;&gt;\(N\)&lt;/span&gt; around a little. Doing so, the statement relevant to us is
+&lt;span class=&#34;math display&#34;&gt;\[ \lim_{N\to\infty} N^{-1/2}(S_N - \mu N) \to \mathcal{N}(0,\sigma^2).\]&lt;/span&gt;
+In this light, the behaviors we see in Figures &lt;a href=&#34;#fig:fig1&#34;&gt;1&lt;/a&gt; and &lt;a href=&#34;#fig:fig2&#34;&gt;2&lt;/a&gt; aren’t terribly surprising. As we take larger and larger &lt;span class=&#34;math inline&#34;&gt;\(N\)&lt;/span&gt;, the behavior we get is approximately normally distributed around zero.&lt;/p&gt;
+&lt;p&gt;There is a small subtlety from the CLT: because we didn’t scale our net winnings by &lt;span class=&#34;math inline&#34;&gt;\(N^{-1/2}\)&lt;/span&gt; like the CLT suggests, as we take larger &lt;span class=&#34;math inline&#34;&gt;\(N\)&lt;/span&gt;, the graphs actually get more and more widely spread out. However, this isn’t the most terribly concerning feature.&lt;/p&gt;
+&lt;p&gt;What &lt;em&gt;is&lt;/em&gt; maybe a more important worry is: this is a statement about a discrete collection of things, but we can clearly see that in Figure &lt;a href=&#34;#fig:fig1&#34;&gt;1&lt;/a&gt; and &lt;a href=&#34;#fig:fig2&#34;&gt;2&lt;/a&gt;, as &lt;span class=&#34;math inline&#34;&gt;\(N\)&lt;/span&gt; gets larger, the plot “looks” more like a continuous function rather than a sequence of distinct dots. However, how do we make this precise?&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div id=&#34;continuous-time&#34; class=&#34;section level1&#34;&gt;
+&lt;h1&gt;Continuous time&lt;/h1&gt;
+&lt;p&gt;&lt;span class=&#34;math inline&#34;&gt;\(S_n\)&lt;/span&gt; is technically only defined at &lt;span class=&#34;math inline&#34;&gt;\(n=1,2,\ldots,N\)&lt;/span&gt; so even though for large &lt;span class=&#34;math inline&#34;&gt;\(N\)&lt;/span&gt; it looks like all the space is filled in, many values are undefined. What do we “fill in” these blanks? Ultimately, we want to construct some function &lt;span class=&#34;math inline&#34;&gt;\(S(t)\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;One possibility, and the most simple, is to connect the dots with straight lines. That is, between &lt;span class=&#34;math inline&#34;&gt;\(n=1,2,\ldots\)&lt;/span&gt; just take &lt;span class=&#34;math inline&#34;&gt;\(S(t)\)&lt;/span&gt; to be the “most recent” value of &lt;span class=&#34;math inline&#34;&gt;\(S_n\)&lt;/span&gt;. Making this more precise, we have to specify some domain for &lt;span class=&#34;math inline&#34;&gt;\(t\)&lt;/span&gt;. Why not take &lt;span class=&#34;math inline&#34;&gt;\(t = \in [0,1]\)&lt;/span&gt;. This also alleviates the issue seen in &lt;a href=&#34;#fig:fig1&#34;&gt;1&lt;/a&gt; and &lt;a href=&#34;#fig:fig2&#34;&gt;2&lt;/a&gt; that the &lt;span class=&#34;math inline&#34;&gt;\(x\)&lt;/span&gt;-axis changes as we vary &lt;span class=&#34;math inline&#34;&gt;\(N\)&lt;/span&gt;. Then, this idea of taking straight lines corresponds to defining &lt;span class=&#34;math inline&#34;&gt;\(S(t)\)&lt;/span&gt; to be
+&lt;span class=&#34;math display&#34;&gt;\[
+S(t) = S_{\lfloor N t \rfloor},
+\]&lt;/span&gt;
+where &lt;span class=&#34;math inline&#34;&gt;\(\lfloor \cdot\rfloor\)&lt;/span&gt; corresponds to the floor operator. This approach seems almost too simple. What if we tried something fancier? Say, instead of making the connection between points flat, we connect them with a straight line. This is exactly the idea of &lt;em&gt;linear interpolation&lt;/em&gt; with knots &lt;span class=&#34;math inline&#34;&gt;\((n/N, S_n)\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;We’ve suggested two possible ways of “connecting the dots,” so which is better? We plot a comparison of these two in Figure &lt;a href=&#34;#fig:fig3&#34;&gt;3&lt;/a&gt;.&lt;/p&gt;
+&lt;div class=&#34;figure&#34;&gt;&lt;span id=&#34;fig:fig3&#34;&gt;&lt;/span&gt;
+&lt;div id=&#34;htmlwidget-3&#34; style=&#34;width:100%;height:450px;&#34; class=&#34;widgetframe html-widget&#34;&gt;&lt;/div&gt;
+&lt;script type=&#34;application/json&#34; data-for=&#34;htmlwidget-3&#34;&gt;{&#34;x&#34;:{&#34;url&#34;:&#34;/~miles/post/2017-10-21-stoch-lim-part-1_files/figure-html//widgets/widget_fig3.html&#34;,&#34;options&#34;:{&#34;xdomain&#34;:&#34;*&#34;,&#34;allowfullscreen&#34;:false,&#34;lazyload&#34;:false}},&#34;evals&#34;:[],&#34;jsHooks&#34;:[]}&lt;/script&gt;
+&lt;p class=&#34;caption&#34;&gt;
+Figure 3: Two ideas for making &lt;span class=&#34;math inline&#34;&gt;\(S_n- \mu n\)&lt;/span&gt; a continuous function &lt;span class=&#34;math inline&#34;&gt;\(S(t)\)&lt;/span&gt;: a step function (via floor operator), or linear interpolation.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;p&gt;What do we learn from Figure &lt;a href=&#34;#fig:fig3&#34;&gt;3&lt;/a&gt;? It doesn’t matter how we connect the discrete values, as ultimately, as &lt;span class=&#34;math inline&#34;&gt;\(N\)&lt;/span&gt; gets large, any sane way of doing so will produce the same result.&lt;/p&gt;
+&lt;div id=&#34;donskers-theorem&#34; class=&#34;section level2&#34;&gt;
+&lt;h2&gt;Donsker’s theorem&lt;/h2&gt;
+&lt;p&gt;There are an &lt;a href=&#34;https://math.stackexchange.com/questions/345608/different-versions-of-functional-central-limit-theorem-aka-donsker-theorem&#34;&gt;overwhelming number&lt;/a&gt; of different statements of the theorem I’m going to state, but all provide roughly the same result. Sometimes this is referred to as the &lt;strong&gt;functional central limit theorem (FCLT)&lt;/strong&gt; because, in some sense, it’s a Central limit theorem for functions!&lt;/p&gt;
+&lt;p&gt;Therefore, for concreteness, let us consider the step function version of &lt;span class=&#34;math inline&#34;&gt;\(S(t)\)&lt;/span&gt; with all the bells and whistles, so
+&lt;span class=&#34;math display&#34;&gt;\[
+\mathbf{S}_N(t) := N^{-1/2}\left(S_{\lfloor Nt \rfloor} - \mu \lfloor N t \rfloor\right), \quad t\in[0,1].\]&lt;/span&gt;
+Then, Donsker’s theorem states that, in some sense&lt;a href=&#34;#fn1&#34; class=&#34;footnote-ref&#34; id=&#34;fnref1&#34;&gt;&lt;sup&gt;1&lt;/sup&gt;&lt;/a&gt;, and under certain conditions,
+&lt;span class=&#34;math display&#34; id=&#34;eq:FCLT&#34;&gt;\[\begin{equation}
+\mathbf{S}_N(t) \rightarrow \sigma \mathbf{B}(t), \quad \text{ as } N\to\infty, \tag{1}
+\end{equation}\]&lt;/span&gt;
+where &lt;span class=&#34;math inline&#34;&gt;\(\mathbf{B}(t)\)&lt;/span&gt; is the classical &lt;strong&gt;Brownian motion&lt;/strong&gt; defined by Gaussian behavior
+and independent increments.&lt;/p&gt;
+&lt;p&gt;On an intuitive level, this connection makes quite a bit of sense because &lt;span class=&#34;math inline&#34;&gt;\(S_n\)&lt;/span&gt; was “built” by adding independent, identically distributed things, so it makes sense that we get a continuous function with independent increments. Donsker’s theorem provides a deceptively rich amount of information. I’ll discuss a few interesting observations, consequences, and applications.&lt;/p&gt;
+&lt;div id=&#34;existence&#34; class=&#34;section level3&#34;&gt;
+&lt;h3&gt;Existence&lt;/h3&gt;
+&lt;p&gt;Quoting the Whitt book, “the most important thing about Brownian motion is that it exists.” While I think this statement is one that clearly outs someone as a pure mathematician, it’s worth noting that the fact that this limit converges to &lt;em&gt;something&lt;/em&gt; and that something is Brownian motion is worth pointing out.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div id=&#34;self-similarity&#34; class=&#34;section level3&#34;&gt;
+&lt;h3&gt;Self-similarity&lt;/h3&gt;
+&lt;p&gt;In the graphs above, you could maybe see that is that the limiting objects looked more and more self-similar, which is a well known property of Brownian motion
+&lt;span class=&#34;math display&#34;&gt;\[
+\mathbf{B}(ct) = c^{-1/2}\mathbf{B}(t).
+\]&lt;/span&gt;&lt;/p&gt;
+&lt;/div&gt;
+&lt;div id=&#34;functional-clt&#34; class=&#34;section level3&#34;&gt;
+&lt;h3&gt;Functional? CLT&lt;/h3&gt;
+&lt;!-- A lot of the usefulness of Donsker&#39;s theorem comes in knowing that this limit persists through functionals of the processes. That is, for all continuous, bounded real-valued $h$,
+$$
+\mathbb{E}[h(\mathbf{S}_N)] \to \mathbb{E}[h(\sigma \mathbf{B})].
+$$ --&gt;
+&lt;p&gt;In the statement of Donsker’s theorem &lt;a href=&#34;#eq:FCLT&#34;&gt;(1)&lt;/a&gt;, it’s not incredibly transparent where the “functional” part of the functional central limit theorem, but in Donsker’s original statement, which is equivalent to the aforementioned, this limit holds if if and only if
+&lt;span class=&#34;math display&#34;&gt;\[
+g(\mathbf{S}_N) \to g(\sigma \mathbf{B})
+\]&lt;/span&gt;
+for &lt;strong&gt;every&lt;/strong&gt; continuous real-valued function &lt;span class=&#34;math inline&#34;&gt;\(g\)&lt;/span&gt;. From these origins, I think the name is a little more clear.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div id=&#34;invariance&#34; class=&#34;section level3&#34;&gt;
+&lt;h3&gt;Invariance&lt;/h3&gt;
+&lt;p&gt;Another thing worth pointing out is that both the CLT and FCLT are &lt;em&gt;invariance&lt;/em&gt; principles. That is, in the limit, the third, fourth, and so on moments of the distribution of &lt;span class=&#34;math inline&#34;&gt;\(X\)&lt;/span&gt; do not matter at all. In other words, the behavior for large &lt;span class=&#34;math inline&#34;&gt;\(N\)&lt;/span&gt; is &lt;em&gt;entirely&lt;/em&gt; characterized by the first two moments of &lt;span class=&#34;math inline&#34;&gt;\(X_i,\)&lt;/span&gt; its mean &lt;span class=&#34;math inline&#34;&gt;\(\mu\)&lt;/span&gt; and variance &lt;span class=&#34;math inline&#34;&gt;\(\sigma^2\)&lt;/span&gt;. That means that any distributions that have the same first two moments will be indistinguishable in the limit. This is pretty surprising, at least to me.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div id=&#34;an-application&#34; class=&#34;section level3&#34;&gt;
+&lt;h3&gt;An application&lt;/h3&gt;
+&lt;p&gt;This application is stolen from Davar Khoshnevisan’s great set of notes&lt;a href=&#34;#fn2&#34; class=&#34;footnote-ref&#34; id=&#34;fnref2&#34;&gt;&lt;sup&gt;2&lt;/sup&gt;&lt;/a&gt; on Donsker’s theorem. A lot of the usefulness of the theorem is in &lt;strong&gt;functionals&lt;/strong&gt; of these processes. Basically, we can pick easy-to-study &lt;span class=&#34;math inline&#34;&gt;\(X_i\)&lt;/span&gt; and study our discrete sum to discern properties about Brownian motion.&lt;/p&gt;
+&lt;p&gt;Say, in our wild bout of gambling, we wanted to keep track of the proportion of time our net winnings were positive. Then, this corresponds to the quantity
+&lt;span class=&#34;math display&#34;&gt;\[  
+Z_N := \frac{1}{N}\sum_{i=1}^{N} \mathbb{I}_{\left\{S_i &amp;gt; 0\right\}}, \qquad S_i = X_1 + \cdots + X_i,
+\]&lt;/span&gt;
+where &lt;span class=&#34;math inline&#34;&gt;\(\mathbb{I}\)&lt;/span&gt; is just the indicator function
+&lt;span class=&#34;math display&#34;&gt;\[
+\mathbb{I}_{\left\{S_i &amp;gt; 0\right\}} = \begin{cases} 1 &amp;amp; \text{if } S_i &amp;gt; 0 \\
+0 &amp;amp; \text{otherwise.}\end{cases}
+\]&lt;/span&gt;
+Then, (with a lot of work to prove this rigorously), intuitively this should behave the same as Brownian motion, so assuming &lt;span class=&#34;math inline&#34;&gt;\(\mathbb{E}[X_i] =0\)&lt;/span&gt;,
+&lt;span class=&#34;math display&#34;&gt;\[
+\lim_{N\to\infty} Z_N \rightarrow \int_0^1 \mathbb{I}_{\left\{\mathbf{B}(s) &amp;gt; 0\right\}} \, \mathrm{d} s.
+\]&lt;/span&gt;
+I’ll skip the details but, we know that this is true for &lt;strong&gt;any&lt;/strong&gt; choice of &lt;span class=&#34;math inline&#34;&gt;\(X_i\)&lt;/span&gt;, so we can choose a very easy one, such as a simple, symmetric (Bernoulli) random walk with
+&lt;span class=&#34;math display&#34;&gt;\[
+\mathbb{P}(X_i = 1) = \mathbb{P}(X_i = -1) = 1/2,
+\]&lt;/span&gt;
+and compute &lt;span class=&#34;math inline&#34;&gt;\(Z_N\)&lt;/span&gt; explicitly, and then take &lt;span class=&#34;math inline&#34;&gt;\(N\to\infty\)&lt;/span&gt;, which just ends up being a combinatorial exercise. Interestingly, when you do this, you find the surprising &lt;strong&gt;arcsine law&lt;/strong&gt;,
+&lt;span class=&#34;math display&#34;&gt;\[
+\mathbb{P}\left\{ \int_0^1 \mathbb{I}_{\left\{\mathbf{B}(s) &amp;gt; 0\right\}} \, \mathrm{d} s \leq a\right \} = \frac{2}{\pi} \arcsin\left(\sqrt{a}\right).
+\]&lt;/span&gt;
+So, for instance, we could ask, what’s the probability we spend at most half the time above breaking even, this corresponds to &lt;span class=&#34;math inline&#34;&gt;\(a=1/2\)&lt;/span&gt; and equates to
+&lt;span class=&#34;math display&#34;&gt;\[
+\mathbb{P}\left\{ \int_0^1 \mathbb{I}_{\left\{\mathbf{B}(s) &amp;gt; 0\right\}} \, \mathrm{d} s \leq \frac{1}{2}\right \} = \frac{2}{\pi} \arcsin\left(\sqrt{1/2}\right) = \frac{1}{2},
+\]&lt;/span&gt;
+which makes some sense. We have a roughly 50-50 chance of, at best breaking even half the time.&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div id=&#34;things-go-awry&#34; class=&#34;section level1&#34;&gt;
+&lt;h1&gt;Things go awry&lt;/h1&gt;
+&lt;p&gt;I’ll tease at the next post I’m planning on making, which discusses what can go wrong with everything I’ve talked about so far. Finding these cases is actually pretty easy. I left some key requirements out of my statement of the classical central limit theorem: &lt;span class=&#34;math inline&#34;&gt;\(X_i\)&lt;/span&gt; must &lt;strong&gt;independent&lt;/strong&gt;, and have &lt;strong&gt;a finite mean and variance&lt;/strong&gt;. Therefore, we can cook up &lt;span class=&#34;math inline&#34;&gt;\(X_i\)&lt;/span&gt; that are non-independent, or a finite mean but infinite variance, or even worse, infinite both. Then we could ask: does this converge in any sense? And if so, what to?&lt;/p&gt;
+In Figure &lt;a href=&#34;#fig:fig4&#34;&gt;4&lt;/a&gt;, I’m plotting one of these cases. What do you notice the limit looks like? For me, the most noticeable observation are large jumps. The FCLT converged to the most classical continuous process without jumps, so our hope is that this converges to the most classical stochastic process &lt;em&gt;with&lt;/em&gt; jumps, a Lévy process. This turns out to be exactly the case! Details next time.
+&lt;div class=&#34;figure&#34;&gt;&lt;span id=&#34;fig:fig4&#34;&gt;&lt;/span&gt;
+&lt;div id=&#34;htmlwidget-4&#34; style=&#34;width:100%;height:450px;&#34; class=&#34;widgetframe html-widget&#34;&gt;&lt;/div&gt;
+&lt;script type=&#34;application/json&#34; data-for=&#34;htmlwidget-4&#34;&gt;{&#34;x&#34;:{&#34;url&#34;:&#34;/~miles/post/2017-10-21-stoch-lim-part-1_files/figure-html//widgets/widget_fig4.html&#34;,&#34;options&#34;:{&#34;xdomain&#34;:&#34;*&#34;,&#34;allowfullscreen&#34;:false,&#34;lazyload&#34;:false}},&#34;evals&#34;:[],&#34;jsHooks&#34;:[]}&lt;/script&gt;
+&lt;p class=&#34;caption&#34;&gt;
+Figure 4: &lt;span class=&#34;math inline&#34;&gt;\(S_n\)&lt;/span&gt; for &lt;span class=&#34;math inline&#34;&gt;\(1 \leq n \leq N\)&lt;/span&gt; with &lt;span class=&#34;math inline&#34;&gt;\(X_n \sim \text{pareto}(0,1.05)\)&lt;/span&gt;.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class=&#34;footnotes&#34;&gt;
+&lt;hr /&gt;
+&lt;ol&gt;
+&lt;li id=&#34;fn1&#34;&gt;&lt;p&gt;by this, I mean in distribution, but this is where the statements vary. See the StackExchange post if you’re interested in these technical details.&lt;a href=&#34;#fnref1&#34; class=&#34;footnote-back&#34;&gt;↩&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;
+&lt;li id=&#34;fn2&#34;&gt;&lt;p&gt;found on his website &lt;a href=&#34;https://www.math.utah.edu/~davar/ps-pdf-files/donsker.pdf&#34;&gt;&lt;i class=&#34;fa fa-file-pdf-o fa-1x&#34;&gt;&lt;/i&gt;&lt;/a&gt;.&lt;a href=&#34;#fnref2&#34; class=&#34;footnote-back&#34;&gt;↩&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;
+&lt;/ol&gt;
+&lt;/div&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Chris is starting a blog in 2017</title>
+      <link>http://www.math.utah.edu/~miles/post/first-post/</link>
+      <pubDate>Wed, 18 Oct 2017 00:00:00 +0000</pubDate>
+      
+      <guid>http://www.math.utah.edu/~miles/post/first-post/</guid>
+      <description>&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/htmlwidgets/htmlwidgets.js&#34;&gt;&lt;/script&gt;
+&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/pymjs/pym.v1.js&#34;&gt;&lt;/script&gt;
+&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/widgetframe-binding/widgetframe.js&#34;&gt;&lt;/script&gt;
+
+
+&lt;p&gt;#Why?&lt;/p&gt;
+&lt;p&gt;A quick Google search turns up articles from as early as 2012 insisting that blogging &lt;a href=&#34;https://www.fastcompany.com/3003658/why-blogging-dead-and-whats-next&#34;&gt;is a dead medium&lt;/a&gt;. While this premonition didn’t turn out to be completly true, I think it is fair to say blogging isn’t in its heyday.&lt;a href=&#34;#fn1&#34; class=&#34;footnote-ref&#34; id=&#34;fnref1&#34;&gt;&lt;sup&gt;1&lt;/sup&gt;&lt;/a&gt; So, &lt;em&gt;why&lt;/em&gt; am I starting a blog now?&lt;/p&gt;
+&lt;p&gt;###Unavailability of low-stakes writing in academia&lt;/p&gt;
+&lt;p&gt;In my day-to-day life, I do a fair amount of writing, but it’s a very specific type, mostly comprising of technical papers and grant proposals. In both of these contexts, I’m trying to &lt;em&gt;sell an idea&lt;/em&gt;. In doing so, this doesn’t leave a lot of room for writing about expository thoughts that aren’t fully fleshed out or are only tangentially relevant. This blog will be my place to go down these rabbit holes.&lt;/p&gt;
+&lt;p&gt;###Documenting non-research ideas&lt;/p&gt;
+&lt;p&gt;Currently, whenever I find some exciting mathematical result that slipped through the cracks in my education, I race to alert my officemates and force them to listen as I go through an excruciatingly long explanation on our white board. This blog will (hopefully) spare them of those occurrences!&lt;/p&gt;
+&lt;p&gt;#Who is this blog written for?&lt;/p&gt;
+&lt;p&gt;Nobody. Or really, myself. I don’t expect anyone to read or care about anything I post. That said, I wouldn’t be too upset if anyone happens to stumble in here.&lt;/p&gt;
+&lt;p&gt;#You changed your website &lt;em&gt;again&lt;/em&gt;? What heck is Hugo?&lt;a href=&#34;#fn2&#34; class=&#34;footnote-ref&#34; id=&#34;fnref2&#34;&gt;&lt;sup&gt;2&lt;/sup&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;My previous academic personal site was made from a modified an HTML template, such as the beautiful ones found on &lt;a href=&#34;https://html5up.net/&#34;&gt;HTML5Up&lt;/a&gt;. I’ve seen a lot of academics go this route recently, and while it was working fine (aside from being a bit annoying to edit), it lacked a critical feature for me to start my blog: &lt;em&gt;a blog&lt;/em&gt;.&lt;/p&gt;
+&lt;p&gt;I had initially considered &lt;a href=&#34;https://jekyllrb.com/&#34;&gt;Jekyll&lt;/a&gt;, which I’ve seen a few academics use, but the internet (reddit) contends that &lt;a href=&#34;http://gohugo.io&#34;&gt;Hugo&lt;/a&gt; is the modern choice, citing its &lt;em&gt;blazing speed&lt;/em&gt; generating websites in 1 ms in stead of 10 ms. This didn’t really matter to me, but a key other ingredient sold me on Hugo: &lt;a href=&#34;https://bookdown.org/yihui/blogdown/&#34;&gt;blogdown&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;The pipeline with blogdown and Hugo seems ideal for blogs with heavy mathematical and programming content. Posts and pages are written in Rmarkdown (basically just vanilla Markdown with R code evaluation) and then converted to an appropriate format by blogdown, and ultimately pushed to the website using Hugo.&lt;/p&gt;
+&lt;p&gt;###What sort of fancy things can you do that made all this effort worth it?&lt;/p&gt;
+&lt;p&gt;One requirement I had was LaTeX support, which is straightforward with Hugo:
+&lt;span class=&#34;math display&#34;&gt;\[ \mathrm{d}X_t = \mu X_t \mathrm{d} t + \sigma X_t \mathrm{d} W_t. \]&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;Because the posts are written in Rmarkdown, R code embeds seamlessly, including plots&lt;/p&gt;
+&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;pie(c(Sky = 78, &amp;quot;Sunny side of pyramid&amp;quot; = 17, &amp;quot;Shady side of pyramid&amp;quot; = 5),
+    init.angle = 315, col = c(&amp;quot;deepskyblue&amp;quot;, &amp;quot;yellow&amp;quot;, &amp;quot;yellow3&amp;quot;), border = FALSE)&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;img src=&#34;http://www.math.utah.edu/~miles/~miles/post/2017-10-18-first-post_files/figure-html/unnamed-chunk-1-1.png&#34; width=&#34;672&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;While possible to make R’s plots look pretty, I was hoping to make the plots interactive in some way, which it turns out is exactly what htmlwidgets and the usfeul R package &lt;a href=&#34;https://github.com/bhaskarvk/widgetframe&#34;&gt;widgetframes&lt;/a&gt; provides. With htmlwidgets, I can now use a bunch of nice R libraries like &lt;a href=&#34;https://plot.ly/&#34;&gt;plotly&lt;/a&gt; and &lt;a href=&#34;https://rstudio.github.io/leaflet/&#34;&gt;leaflet&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;For example, here is an interactive Plotly plot&lt;/p&gt;
+&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;library(plotly)
+library(widgetframe)
+library(gapminder)
+
+g &amp;lt;- gapminder
+pp &amp;lt;- plot_ly(x = g$gdpPercap, y = g$lifeExp, size = g$pop, color = g$continent, 
+    frame = g$year, text = g$country, hoverinfo = &amp;quot;text&amp;quot;, type = &amp;quot;scatter&amp;quot;, 
+    mode = &amp;quot;markers&amp;quot;) %&amp;gt;% layout(xaxis = list(type = &amp;quot;log&amp;quot;, title = &amp;quot;$ GDP/capita&amp;quot;), 
+    yaxis = list(title = &amp;quot;life expect&amp;quot;))
+
+frameWidget(pp)&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;div id=&#34;htmlwidget-1&#34; style=&#34;width:100%;height:480px;&#34; class=&#34;widgetframe html-widget&#34;&gt;&lt;/div&gt;
+&lt;script type=&#34;application/json&#34; data-for=&#34;htmlwidget-1&#34;&gt;{&#34;x&#34;:{&#34;url&#34;:&#34;/~miles/post/2017-10-18-first-post_files/figure-html//widgets/widget_unnamed-chunk-2.html&#34;,&#34;options&#34;:{&#34;xdomain&#34;:&#34;*&#34;,&#34;allowfullscreen&#34;:false,&#34;lazyload&#34;:false}},&#34;evals&#34;:[],&#34;jsHooks&#34;:[]}&lt;/script&gt;
+and Leaflet&lt;/p&gt;
+&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;library(leaflet)
+library(widgetframe)
+
+m &amp;lt;- leaflet() %&amp;gt;%
+addTiles() %&amp;gt;%  # Add default OpenStreetMap map tiles
+addMarkers(lng=174.768, lat=-36.852, popup=&amp;quot;The birthplace of R&amp;quot;)
+frameWidget(m)&lt;/code&gt;&lt;/pre&gt;
+&lt;div id=&#34;htmlwidget-2&#34; style=&#34;width:100%;height:480px;&#34; class=&#34;widgetframe html-widget&#34;&gt;&lt;/div&gt;
+&lt;script type=&#34;application/json&#34; data-for=&#34;htmlwidget-2&#34;&gt;{&#34;x&#34;:{&#34;url&#34;:&#34;/~miles/post/2017-10-18-first-post_files/figure-html//widgets/widget_unnamed-chunk-3.html&#34;,&#34;options&#34;:{&#34;xdomain&#34;:&#34;*&#34;,&#34;allowfullscreen&#34;:false,&#34;lazyload&#34;:false}},&#34;evals&#34;:[],&#34;jsHooks&#34;:[]}&lt;/script&gt;
+&lt;p&gt;These are far cry away in fanciness from posts by the &lt;a href=&#34;https://www.nytimes.com/interactive/2016/04/11/upshot/for-the-poor-geography-is-life-and-death.html&#34;&gt;New York Times&lt;/a&gt;, but I’m pretty happy with the capabilities. I’m now out of excuses to avoid adding actual content to the blog.&lt;/p&gt;
+&lt;div class=&#34;footnotes&#34;&gt;
+&lt;hr /&gt;
+&lt;ol&gt;
+&lt;li id=&#34;fn1&#34;&gt;&lt;p&gt;but live-tweeting every thought might be?&lt;a href=&#34;#fnref1&#34; class=&#34;footnote-back&#34;&gt;↩&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;
+&lt;li id=&#34;fn2&#34;&gt;&lt;p&gt;actual quote, from my officemate&lt;a href=&#34;#fnref2&#34; class=&#34;footnote-back&#34;&gt;↩&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;
+&lt;/ol&gt;
+&lt;/div&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Complex nearly immotile behavior of microtubule-associated cargos</title>
+      <link>http://www.math.utah.edu/~miles/publication/nearlyimmotile/</link>
+      <pubDate>Fri, 01 Sep 2017 00:00:00 +0000</pubDate>
+      
+      <guid>http://www.math.utah.edu/~miles/publication/nearlyimmotile/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Jump locations of jump-diffusion processes with state-dependent rates</title>
+      <link>http://www.math.utah.edu/~miles/publication/jumplocs/</link>
+      <pubDate>Tue, 22 Aug 2017 00:00:00 +0000</pubDate>
+      
+      <guid>http://www.math.utah.edu/~miles/publication/jumplocs/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Bidirectionality from cargo thermal fluctuations in motor-mediated transport</title>
+      <link>http://www.math.utah.edu/~miles/publication/bidirectional/</link>
+      <pubDate>Fri, 07 Jul 2017 00:00:00 +0000</pubDate>
+      
+      <guid>http://www.math.utah.edu/~miles/publication/bidirectional/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Exploring the connection between matroids and network coding theory</title>
+      <link>http://www.math.utah.edu/~miles/publication/matroid/</link>
+      <pubDate>Mon, 08 Jul 2013 00:00:00 +0000</pubDate>
+      
+      <guid>http://www.math.utah.edu/~miles/publication/matroid/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Teaching &amp; Outreach</title>
+      <link>http://www.math.utah.edu/~miles/teaching/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>http://www.math.utah.edu/~miles/teaching/</guid>
+      <description>
+
+&lt;h1 id=&#34;past-course-websites&#34;&gt;Past course websites&lt;/h1&gt;
+
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th align=&#34;left&#34;&gt;&lt;/th&gt;
+&lt;th align=&#34;left&#34;&gt;&lt;/th&gt;
+&lt;th align=&#34;left&#34;&gt;&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;Spring 2017&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;Math 1180: Prob &amp;amp; Stats for Biologists (lab)&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/courses/s17_1180&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;Fall 2016&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;Math 1170: Calc for Biologists (lab)&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/courses/f16_1170&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;Summer 2016&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;Math 3140: Vector Calculus &amp;amp; PDEs&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/courses/su16_3140&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;Spring 2016&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;Math 1321:  Accelerated Engineering Calc II&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/courses/s16_1321&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;Fall 2015&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;Math 2250: ODEs &amp;amp; Linear Algebra&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/courses/f15_2250&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;Spring 2015&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;Math 1320: Engineering Calculus II&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/courses/s15_1320&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;Fall 2014&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;Math 1310: Engineering Calculus I&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/courses/f14_1310&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h1 id=&#34;outreach-materials&#34;&gt;Outreach materials&lt;/h1&gt;
+
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th align=&#34;left&#34;&gt;&lt;/th&gt;
+&lt;th align=&#34;left&#34;&gt;&lt;/th&gt;
+&lt;th align=&#34;left&#34;&gt;&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;Chaos, Fractals, Game of Life&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;Powerpoint + worksheet for Science Day at the U workshop, 2017&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/files/docs/scienceday2017_pres.pptx&#34;&gt; &lt;i class=&#34;fa fa-file-powerpoint-o fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt; &lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/files/docs/scienceday2017_ws.pdf&#34;&gt; &lt;i class=&#34;fa fa-file-pdf-o fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;Zombies + Math&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;Presentation + worksheet for workshop to incarcerated youth, 2017&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/files/docs/zombietalk.pdf&#34;&gt; &lt;i class=&#34;fa fa-file-pdf-o fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt; &lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/files/docs/zombiews.pdf&#34;&gt; &lt;i class=&#34;fa fa-file-pdf-o fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;Disorder from Diffusion&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;Pi Day at the Leonardo Museum, 2016&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;https://docs.google.com/presentation/d/1CK8u9wQ10kS0SWT4XCV6HQjG10I66vUnd9LQwpy66WE/pub?start=false&amp;loop=false&amp;delayms=60000&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;PDS: Algebraic Geometry + Math Bio&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;UofU Math Dept Graduate Student Colloq, 2016&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/files/docs/gsac2016.pdf&#34;&gt; &lt;i class=&#34;fa fa-file-pdf-o fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;An Introduction to Pattern Formation&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;UofU Math Dept Undergraduate Colloq, 2015&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;https://slides.com/cmiles/undergrad_colloq_2015/&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;The Monty Hall Problem&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;Science Day at the U, 2015&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;https://slides.com/cmiles/scienceday2015-montyhall/&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h1 id=&#34;notes&#34;&gt;Notes&lt;/h1&gt;
+
+&lt;p&gt;I&amp;rsquo;ve written up some notes for personal use that may helpful for others.&lt;/p&gt;
+
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th align=&#34;left&#34;&gt;&lt;/th&gt;
+&lt;th align=&#34;left&#34;&gt;&lt;/th&gt;
+&lt;th align=&#34;left&#34;&gt;&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;Linear Operators &amp;amp; Spectral Theory&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;Taken from Math 6710 at Utah, the written qualifying exam class&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/files/docs/6710notes.pdf&#34;&gt; &lt;i class=&#34;fa fa-file-pdf-o fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;Ordinary Differential Equations&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;Taken from Math 6410 at Utah, the written qualifying exam class&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/files/docs/6410notes.pdf&#34;&gt; &lt;i class=&#34;fa fa-file-pdf-o fa-2x &#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;Weak Noise Escape Problems&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;WKB theory, Hamilton-Jacobi formulations of metastable escape&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/files/docs/escape_problems.pdf&#34;&gt; &lt;i class=&#34;fa fa-file-pdf-o fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+</description>
+    </item>
+    
+  </channel>
+</rss>

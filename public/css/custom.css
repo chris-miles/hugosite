@@ -1,0 +1,116 @@
+.navbar-default .navbar-brand{
+	text-transform:none;
+	font-size:32px;
+     border:none;
+
+}
+
+.navbar-default .navbar-nav>.active>a, .navbar-default .navbar-nav>.active>a:focus, .navbar-default .navbar-nav>.active>a:hover {
+	font-weight:400px;
+     border:none;
+}
+
+.navbar-default .navbar-collapse, .navbar-default .navbar-form{
+    border:none;
+}
+
+img[src$='#center']
+{
+    display: block;
+    margin: 0.7rem auto; /* you can replace the vertical '0.7rem' by
+                            whatever floats your boat, but keep the
+                            horizontal 'auto' for this to work */
+    /* whatever else styles you fancy here */
+    width:35%;
+}
+
+img[src$='#floatleft']
+{
+    float:left;
+    margin: 0.7rem;      /* this margin is totally up to you */
+    /* whatever else styles you fancy here */
+}
+
+img[src$='#floatright']
+{
+    float:right;
+    margin: 0.7rem;      /* this margin is totally up to you */
+    /* whatever else styles you fancy here */
+		max-width:40%;
+		-webkit-transform: translateZ(0) scale(1.0, 1.0);
+		min-width:200px;
+
+}
+
+p{
+	line-height: 140%;
+}
+
+#profile{
+ padding: 0px 5px;
+}
+
+#profile .portrait{
+width: 200px;
+height: 200px;
+border-radius:50%;
+-webkit-transform: translateZ(0) scale(1.0, 1.0);
+
+}
+
+.navbar-default{
+    border:none;
+}
+
+.btn-primary{
+	font-size:16px;
+}
+
+.caption{
+    text-align:center;
+font-size:17px;
+padding-left: 15%;
+padding-right: 15%;
+padding-top: -50px;
+font-family: "Nunito";
+}
+
+.footnotes{
+    font-size:16px;
+}
+
+.article-style img, .article-style video{
+    margin-bottom:5px;
+}
+
+.pubtitle{
+    font-family: "Nunito";
+    font-weight:700;
+    font-size:20px;
+}
+
+.pubsub{
+    font-style:italic;
+}
+
+.authors{
+    font-size:17px;
+    display:block;
+    margin-top:0px;
+    margin-bottom:5px;
+    line-height:140%;
+}
+
+
+.pubtop{
+    padding-bottom:0px;
+    margin-bottom:0px;
+    line-height: 128%;
+    display: block;    
+}
+
+.pub-icon{
+    color: rgba(0, 0, 0, 1);
+    font-size: 20px;
+    padding-right: 5px;
+}

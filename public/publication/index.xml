@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Publications on Chris Miles</title>
+    <link>http://www.math.utah.edu/~miles/publication/</link>
+    <description>Recent content in Publications on Chris Miles</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 01 Jan 2017 00:00:00 +0000</lastBuildDate>
+    
+	<atom:link href="http://www.math.utah.edu/~miles/publication/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Analysis of non-processive molecular motor transport using renewal reward theory</title>
+      <link>http://www.math.utah.edu/~miles/publication/nonprocessrenewal/</link>
+      <pubDate>Wed, 15 Nov 2017 00:00:00 +0000</pubDate>
+      
+      <guid>http://www.math.utah.edu/~miles/publication/nonprocessrenewal/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Complex nearly immotile behavior of microtubule-associated cargos</title>
+      <link>http://www.math.utah.edu/~miles/publication/nearlyimmotile/</link>
+      <pubDate>Fri, 01 Sep 2017 00:00:00 +0000</pubDate>
+      
+      <guid>http://www.math.utah.edu/~miles/publication/nearlyimmotile/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Jump locations of jump-diffusion processes with state-dependent rates</title>
+      <link>http://www.math.utah.edu/~miles/publication/jumplocs/</link>
+      <pubDate>Tue, 22 Aug 2017 00:00:00 +0000</pubDate>
+      
+      <guid>http://www.math.utah.edu/~miles/publication/jumplocs/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Bidirectionality from cargo thermal fluctuations in motor-mediated transport</title>
+      <link>http://www.math.utah.edu/~miles/publication/bidirectional/</link>
+      <pubDate>Fri, 07 Jul 2017 00:00:00 +0000</pubDate>
+      
+      <guid>http://www.math.utah.edu/~miles/publication/bidirectional/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Exploring the connection between matroids and network coding theory</title>
+      <link>http://www.math.utah.edu/~miles/publication/matroid/</link>
+      <pubDate>Mon, 08 Jul 2013 00:00:00 +0000</pubDate>
+      
+      <guid>http://www.math.utah.edu/~miles/publication/matroid/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

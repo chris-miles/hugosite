@@ -1,0 +1,264 @@
+---
+title: 'Operator splitting'
+author: Chris Miles
+date: '2018-03-02' #'`r format(Sys.time(), "%Y-%m-%d")`'
+slug: operator-splitting
+categories:
+  - math
+tags:
+  - differential equations
+  - PDEs
+  - ODEs
+  - numerics
+summary: "I'll discuss the use of operator splitting as the basis for numerically solving ODEs or PDEs with some concrete examples. Along the way, we'll stumble into a lot of linear algebra and a teensy bit of Lie theory."
+---
+```{r, include=FALSE,warning=FALSE,message=FALSE}
+library(plotly)
+library(widgetframe)
+set.seed(2)
+```
+
+I stumbled across the recent paper ["Efficient Reactive Brownian Dynamics"](https://arxiv.org/abs/1710.02232), which proposes a reaction-diffusion scheme based on a technique called Strang splitting. While I was vaguely familiar with the notion of splitting, I wanted to write up this post to think out some of the details I hadn't previously. 
+
+The reaction-diffusion scheme is a perfect context to understand splitting because there are effectively two (coupled, but distinct) dynamics going on: diffusion and reactions. This will be the generic setup we'll consider in this post. Suppose we have some quantity $u(t)$ that evolves by the differential equation
+\begin{equation}
+\frac{\partial u}{\partial t} = L_1(u) + L_2(u),(\#eq:full)
+\end{equation}
+where $L_1,L_2$ are two operators. While we'll consider some specific choices of these operators, I'll mention now that we're not limited to just ODEs for this. That is, $u$ could be a function of $x$, and $L_i$ could be an differential operator in $x$, giving us a PDE for $u(x,t)$. 
+
+The whole idea is then: we want to somehow solve the two problems separately. That is, we want to split \@ref(eq:full) into the subproblems
+\begin{equation}
+\begin{cases}
+\frac{\partial u_1}{\partial t} &= L_1 (u_1)\\
+\frac{\partial u_2}{\partial t} &= L_2 (u_2)
+\end{cases}(\#eq:L1L2)
+\end{equation}
+Say we were able to solve the system \@ref(eq:L1L2), how do we combine $u_1$ and $u_2$ to construct the solution $u(t)$ to the full system \@ref(eq:full)?
+
+## Linearity, Matrix exponentials
+
+Suppose that $L_1, L_2$ are both **linear** operators, and $u(t)$ does not depend on space, so $L_1, L_2$ are just matrices. The solution to \@ref(eq:full) can be constructed by the matrix exponential
+\begin{equation}
+	u(t) = e^{(L_1+L_2)t}u(0).
+\end{equation}
+Using the same technique, we know the solutions to \@ref(eq:L1L2) are
+\begin{equation}
+	u_1(t) = e^{L_1 t}u_1(0), \qquad u_2(t) e^{L_2 t} u_2(0).
+\end{equation}
+Because we're cooking up $u_1,u_2$ we can choose initial conditions on $u_1, u_2$ however we'd like. Say, we take $u_1(0)u_2(0)=u(0)$. Is this enough to make the answer obvious? 
+If we then consider
+\begin{equation}
+	u_*(t) := u_1(t)u_2(t) = e^{L_1 t} u_1(0) e^{L_2 t} u_2(0) = e^{L_1 t} e^{L_2 t} u(0),
+\end{equation}
+does this give us the solution to our original problem? **No!** 
+
+Unfortunately, the properties of *matrix* exponentials tell us that (in general)
+\begin{equation}
+	e^{A+B} \neq e^{A}e^{B},(\#eq:AB)
+\end{equation}
+and therefore
+\begin{equation}
+	e^{L_1 t} e^{L_2 t} \neq  e^{(L_1+L_2)t}.
+\end{equation}
+
+## Commutators, BCH formula
+
+Is (\#eq:AB) ever true? That is, can we ever naively combine matrix exponentials? It turns out, the answer to this is *yes*, if $A,B$ commute. That is
+\begin{equation}
+	AB = BA \qquad \leftrightarrow \qquad e^{A}e^{B} = e^{A+B}.
+\end{equation}
+We'll look at concrete examples later, but it turns out that this is pretty rare. Is all hope lost? Is there any way to recover an approximation for $u(t)$ from this technique?
+
+The answer (somewhat surprisingly) comes from Lie theory, in the form of the Baker-Campell-Hausdorff (BCH) formula. To state the formula, first I must mention the **commutator** of two matrices $A,B$, defined by
+\begin{equation}
+	[A,B] := AB - BA.
+\end{equation}
+Note that if $A,B$ commute, $[A,B] = 0$. With this, we can state the classical result. 
+
+### Baker-Campell-Hausdorff formula
+Consider the matrices $A,B,C$ such that
+\begin{equation}
+e^{A}e^{B} = e^{C}
+\end{equation}
+then $C$ can be computed by the series
+\begin{equation}
+	C = A +B  + \frac{1}{2} [A,B] + \frac{1}{12}[A,[A,B]]+ \cdots.
+\end{equation}
+The usefulness of this is hopefully apparent: even though our linear operators may not commute, we can take progressive terms of this series to get an approximation for the full solution to our system.
+
+## Splitting techniques, errors
+
+We've discussed already the possibility of some approximations, but I just wanted to associate the names used in the literature with the explicit expressions used. 
+
+The most naive approximation, but also the simplest is 
+
+### First order splitting
+
+\begin{equation}
+	e^{t(L_1+L_2)} \approx e^{tL_1} e^{tL_2}.
+\end{equation}
+We know from the BCH formula that if $L_1,L_2$ commute, this is an *exact* technique. However, the BCH formula also provides the next approximation
+
+### Second order (Strang) splitting
+
+\begin{equation}
+	e^{t(L_1+L_2)} \approx e^{\frac{1}{2} tL_1} e^{tL_2} e^{\frac{1}{2}t L_1}.
+\end{equation}
+This approximation was popularized by [Gil Strang](https://en.wikipedia.org/wiki/Gilbert_Strang) and associated with his name. The perhaps more useful description of second order comes from the observation that the BCH formula actually provides error estimates
+\begin{equation}
+	e^{t(L_1+L_2)} - e^{\frac{1}{2} tL_1} e^{tL_2} e^{\frac{1}{2}t L_1} \sim \mathcal{O}(h^3), (\#eq:strang)
+\end{equation}
+which describes the *local error* introduced by the approximation, and therefore the global error
+\begin{equation}
+	\text{global error} = \text{(# of steps)} \times \text{(error at each step)} \sim \frac{1}{h} \times h^3 \sim \mathcal{O}(h^2),
+\end{equation}
+hence the name *second order splitting*. 
+
+## Examples
+
+### Advection-Diffusion
+
+In this section, I'll discuss a few examples, most of which are taken from [these lecture notes](https://ocw.mit.edu/courses/mathematics/18-336-numerical-methods-for-partial-differential-equations-spring-2009/lecture-notes/MIT18_336S09_lec20.pdf).
+
+Consider the classical advection-diffusion equation
+\begin{equation}
+	\partial_t u = -v u_x + Du_{xx}.(\#eq:advec-diff)
+\end{equation}
+Here, we have two clear parts, so take 
+\begin{equation}
+	L_1 u := -v u_x, \qquad L_2 u := Du_{xx}.
+\end{equation}
+What happens when we apply splitting to this problem? Let's use the BCH formula to see how these operators interact:
+\begin{equation}
+	L_1 L_2 u = -v(D u_{xx})_{x} = D (-v u_{x})_{xx} = L_2 L_1 u,
+\end{equation}
+so $[L_1,L_2] =0 $. Therefore, we know that first order splitting is *exact* in this case, meaning that
+\begin{equation}
+	u(x,t) = e^{(L_1+L_2)t} u(0) = e^{tL_1} e^{tL_2} u_0(x). 
+	(\#eq:advec-sol)
+\end{equation}
+If we unpack \@ref(eq:advec-sol) a bit, we'll find that it provides a surprisingly intuitive result. Consider the two rightmost terms: $\exp{(t L_2)} u(0)$. We know $L_2$ is just the pure diffusion  operator, so the exponential is the solution operator (generator of the semi-group, if those words mean anything) for the heat/diffusion equation equation applied to some initial condition. Consequently,
+\begin{equation}
+e^{tL_2} u_0(x) = u^\star(x,t) \quad \leftrightarrow \quad \partial_ tu^\star = D \partial_{xx} u^\star, \,\, u^\star(x,0) = u_0(x).
+\end{equation} 
+Now, we must apply the $L_1$ exponential, but this is simply the solution operator for the pure advection equation applied to an initial condition, which we know produces a traveling wave solution. Consequently, we immediately have
+\begin{equation}
+e^{tL_1} u^\star(x,t) = u^\star(x-vt,t). 
+\end{equation}
+While this solution can easily be obtained by a Fourier transform, the splitting technique breaks down each operator's contribution to the full solution to  \@ref(eq:advec-diff), in (what I think are) intuitive parts. 
+
+### Reaction-Diffusion
+
+In the last example, we saw that *sometimes* operators commute and work out nicely, however this is usually not the case. I started this post by suggesting that reaction-diffusion is a natural place for splitting to arise, so let's consider the simplest scenario of such. Consider the PDE
+\begin{equation}
+\partial_t u = D \partial_{xx} u + (a-b u),
+\end{equation}
+and call $L_1$ the diffusive part and $L_2$ the reaction (just decay in this case). We can easily check that these do not commute by comparing
+\begin{equation}
+	L_1 L_2 u = -bDu_{xx} \qquad \neq \qquad L_2 L_1 u = a-bD_{uxx},
+\end{equation}
+meaning this is a case where first order splitting is \textit{not} exact, but we've established a few appropriate approximations. 
+
+Here, I'll show a brief (crude) implementation of Strang splitting in R, using Crank-Nicolson for the diffusion part and forward Euler for the reaction term.^[these choices are a little dumb, as the Euler stepping limits the error to first order, but I just want to show how easy it is to implement splitting]
+
+We first just establish some preliminary constants for the simulation
+```{r,tidy=TRUE,highlight=TRUE}
+dt = .001; # step size in time
+dx = .05; # step size in space
+T = 1; # max time
+
+D = 1; # diff coefficient
+b = .6; # decay rate
+a = 1.0; # birth rate
+L = 1; # length of domain
+
+Nt = round(T/dt) # number of time stpes
+Nx = round(L/dx) # number of spatial points
+x = seq(0, L, length.out=Nx+1)    # Mesh points in space
+uvals = matrix(nrow=(Nx+1),ncol=(Nt+1)) # matrix of solutions
+
+uvals[,1] = sin(pi*x/L) # just some nice initial condition that satisfies BCs
+```
+```{r}
+## reaction term  f(u) = a-bu
+f <- function(u, x,t){
+ return (a-b*u)
+}
+```
+From there, we just need to specify how we'll numerically solve each of the components. For the reaction, we just simply take an Euler step
+```{r}
+# forward euler, u_{i+1} = u_i + dt*f(u_i)
+rxn_step = function(u,dt){ 
+  return (u + dt*f(u))
+}
+```
+For the diffusion term, things get a little more complicated, but ultimately we're just going to use [Crank-Nicolson](https://en.wikipedia.org/wiki/Crank%E2%80%93Nicolson_method), implemented (probably poorly) below
+```{r}
+
+# Construct tridiagonal matrix
+tridiag <- function(upper, lower, main){
+    out <- matrix(0,length(main),length(main))
+    diag(out) <- main
+    indx <- seq.int(length(upper))
+    out[cbind(indx+1,indx)] <- lower
+    out[cbind(indx,indx+1)] <- upper
+    return(out)
+} 
+
+# Crank Nicolson, NOT including rxns because of splitting
+diffusion_step = function(u,dt){
+    mu = 0.5*D*dt/(dx^2); # 0.5*CFL number
+    diagonal = rep(1+2*mu, Nx+1)
+    lower = rep(-mu,Nx)
+    upper = rep(-mu,Nx)
+    
+    # BCs
+    diagonal[1] = 1;
+    upper[1] = 0;
+    diagonal[Nx+1] = 1;
+    lower[Nx] = 0;
+    A<- tridiag(upper,lower,diagonal)    
+    bb = numeric(Nx+1);
+    bb[2:(Nx)] = u[2:(Nx)]+mu*(u[1:(Nx-1)] - 2*u[2:(Nx)] + u[3:(Nx+1)]);
+    usol <- solve(A,bb)
+    return(usol)
+}
+```
+
+
+Now, we use the Strang splitting described by \@ref(eq:strang), which says at each step: take $0.5 \Delta t$ of a reaction step, followed by $\Delta t$ of a diffusion step, and then finally $0.5\Delta t$ of a reaction step. 
+
+```{r}
+for (i in 1:Nt){
+	uold_split = uvals[,i];
+	uuu_split = rxn_step(uold_split,dt/2);
+	uu_split = diffusion_step(uuu_split,dt);
+	u_split = rxn_step(uu_split,dt/2);
+	uvals[,i+1] = u_split;
+}
+```
+Now we've constructed our solution, we see we get a nice plot.
+```{r,echo=FALSE,tidy=TRUE,warning=FALSE,message=FALSE,}
+tvals = seq(0,T,by=dt)
+p <- plot_ly(y=tvals, x=x)%>%
+    add_surface(z=t(uvals))%>%
+    layout(scene = list(aspectratio=list(x=1.3,y=.95,z=.65),
+      xaxis = list(title = "x (space)",titlefont=list(size=16)),
+      yaxis = list(title = "t (time)",titlefont=list(size=16)),
+      zaxis = list(title = "u(x,t)",titlefont=list(size=16))))%>% 
+      hide_colorbar()
+
+frameWidget(p, height=450)
+```
+A lot of improvements can be made to this code, but hopefully this conveys the barebones idea.
+
+## Loose ends
+
+This post really covers only the broad strokes of splitting. We haven't addressed some very natural questions, such as: 
+
+1. *if each of the split subproblems is numerically stable, is the full problem?*
+2. *how do we split so that steady-state solutions are preserved?*
+3. *how do we extend this to stochastic equations?*
+
+ A great discussion (and huge resource for this post) can be found in [this book chapter](http://www.math.ucla.edu/~wotaoyin/splittingbook/ch3-macnamara-strang.pdf) co-authored by Gil Strang himself. A nice discussion of a Python implementation of Strang splitting can be found [here](https://hplgit.github.io/fdm-book/doc/pub/book/sphinx/._book018.html).
+

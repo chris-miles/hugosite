@@ -1,0 +1,70 @@
+---
+title: Chris is starting a blog in 2017
+author: Chris Miles
+date: '2017-10-18'
+slug: first-post
+categories: ['potpourri']
+tags: ['blog','blogdown','hugo']
+lastmod: '2017-10-18'
+header:
+  image: "headers/hugo-logo.png"
+summary: "The debut post on this blog, mostly consisting of rambling about its creation: both *why* and *how*. "
+---
+
+<script src="/~miles/rmarkdown-libs/htmlwidgets/htmlwidgets.js"></script>
+<script src="/~miles/rmarkdown-libs/pymjs/pym.v1.js"></script>
+<script src="/~miles/rmarkdown-libs/widgetframe-binding/widgetframe.js"></script>
+
+
+<p>#Why?</p>
+<p>A quick Google search turns up articles from as early as 2012 insisting that blogging <a href="https://www.fastcompany.com/3003658/why-blogging-dead-and-whats-next">is a dead medium</a>. While this premonition didn’t turn out to be completly true, I think it is fair to say blogging isn’t in its heyday.<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a> So, <em>why</em> am I starting a blog now?</p>
+<p>###Unavailability of low-stakes writing in academia</p>
+<p>In my day-to-day life, I do a fair amount of writing, but it’s a very specific type, mostly comprising of technical papers and grant proposals. In both of these contexts, I’m trying to <em>sell an idea</em>. In doing so, this doesn’t leave a lot of room for writing about expository thoughts that aren’t fully fleshed out or are only tangentially relevant. This blog will be my place to go down these rabbit holes.</p>
+<p>###Documenting non-research ideas</p>
+<p>Currently, whenever I find some exciting mathematical result that slipped through the cracks in my education, I race to alert my officemates and force them to listen as I go through an excruciatingly long explanation on our white board. This blog will (hopefully) spare them of those occurrences!</p>
+<p>#Who is this blog written for?</p>
+<p>Nobody. Or really, myself. I don’t expect anyone to read or care about anything I post. That said, I wouldn’t be too upset if anyone happens to stumble in here.</p>
+<p>#You changed your website <em>again</em>? What heck is Hugo?<a href="#fn2" class="footnote-ref" id="fnref2"><sup>2</sup></a></p>
+<p>My previous academic personal site was made from a modified an HTML template, such as the beautiful ones found on <a href="https://html5up.net/">HTML5Up</a>. I’ve seen a lot of academics go this route recently, and while it was working fine (aside from being a bit annoying to edit), it lacked a critical feature for me to start my blog: <em>a blog</em>.</p>
+<p>I had initially considered <a href="https://jekyllrb.com/">Jekyll</a>, which I’ve seen a few academics use, but the internet (reddit) contends that <a href="http://gohugo.io">Hugo</a> is the modern choice, citing its <em>blazing speed</em> generating websites in 1 ms in stead of 10 ms. This didn’t really matter to me, but a key other ingredient sold me on Hugo: <a href="https://bookdown.org/yihui/blogdown/">blogdown</a>.</p>
+<p>The pipeline with blogdown and Hugo seems ideal for blogs with heavy mathematical and programming content. Posts and pages are written in Rmarkdown (basically just vanilla Markdown with R code evaluation) and then converted to an appropriate format by blogdown, and ultimately pushed to the website using Hugo.</p>
+<p>###What sort of fancy things can you do that made all this effort worth it?</p>
+<p>One requirement I had was LaTeX support, which is straightforward with Hugo:
+<span class="math display">\[ \mathrm{d}X_t = \mu X_t \mathrm{d} t + \sigma X_t \mathrm{d} W_t. \]</span></p>
+<p>Because the posts are written in Rmarkdown, R code embeds seamlessly, including plots</p>
+<pre class="r"><code>pie(c(Sky = 78, &quot;Sunny side of pyramid&quot; = 17, &quot;Shady side of pyramid&quot; = 5),
+    init.angle = 315, col = c(&quot;deepskyblue&quot;, &quot;yellow&quot;, &quot;yellow3&quot;), border = FALSE)</code></pre>
+<p><img src="/~miles/post/2017-10-18-first-post_files/figure-html/unnamed-chunk-1-1.png" width="672" /></p>
+<p>While possible to make R’s plots look pretty, I was hoping to make the plots interactive in some way, which it turns out is exactly what htmlwidgets and the usfeul R package <a href="https://github.com/bhaskarvk/widgetframe">widgetframes</a> provides. With htmlwidgets, I can now use a bunch of nice R libraries like <a href="https://plot.ly/">plotly</a> and <a href="https://rstudio.github.io/leaflet/">leaflet</a>.</p>
+<p>For example, here is an interactive Plotly plot</p>
+<pre class="r"><code>library(plotly)
+library(widgetframe)
+library(gapminder)
+
+g &lt;- gapminder
+pp &lt;- plot_ly(x = g$gdpPercap, y = g$lifeExp, size = g$pop, color = g$continent, 
+    frame = g$year, text = g$country, hoverinfo = &quot;text&quot;, type = &quot;scatter&quot;, 
+    mode = &quot;markers&quot;) %&gt;% layout(xaxis = list(type = &quot;log&quot;, title = &quot;$ GDP/capita&quot;), 
+    yaxis = list(title = &quot;life expect&quot;))
+
+frameWidget(pp)</code></pre>
+<p><div id="htmlwidget-1" style="width:100%;height:480px;" class="widgetframe html-widget"></div>
+<script type="application/json" data-for="htmlwidget-1">{"x":{"url":"/~miles/post/2017-10-18-first-post_files/figure-html//widgets/widget_unnamed-chunk-2.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+and Leaflet</p>
+<pre class="r"><code>library(leaflet)
+library(widgetframe)
+
+m &lt;- leaflet() %&gt;%
+addTiles() %&gt;%  # Add default OpenStreetMap map tiles
+addMarkers(lng=174.768, lat=-36.852, popup=&quot;The birthplace of R&quot;)
+frameWidget(m)</code></pre>
+<div id="htmlwidget-2" style="width:100%;height:480px;" class="widgetframe html-widget"></div>
+<script type="application/json" data-for="htmlwidget-2">{"x":{"url":"/~miles/post/2017-10-18-first-post_files/figure-html//widgets/widget_unnamed-chunk-3.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+<p>These are far cry away in fanciness from posts by the <a href="https://www.nytimes.com/interactive/2016/04/11/upshot/for-the-poor-geography-is-life-and-death.html">New York Times</a>, but I’m pretty happy with the capabilities. I’m now out of excuses to avoid adding actual content to the blog.</p>
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn1"><p>but live-tweeting every thought might be?<a href="#fnref1" class="footnote-back">↩</a></p></li>
+<li id="fn2"><p>actual quote, from my officemate<a href="#fnref2" class="footnote-back">↩</a></p></li>
+</ol>
+</div>

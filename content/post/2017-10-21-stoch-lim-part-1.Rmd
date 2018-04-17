@@ -1,0 +1,361 @@
+---
+title: 'Stochastic limits, part 1: CLT,  Donsker’s FCLT'
+author: Chris Miles
+date: '2017-10-21' #'`r format(Sys.time(), "%Y-%m-%d")`'
+slug: stoch-lim-part-1
+categories:
+  - math
+tags:
+  - stochastics
+  - probability
+  - Brownian motion
+summary: "One way to understand the structure of randomness is to experience *a lot* of it. We'll use $\\lim_{n\\to\\infty} X_1 + \\cdots + X_n$ as a case study, and along the way bump into classical ideas like the Central Limit Theorem (CLT) and Brownian motion."
+---
+```{r, include=FALSE,warning=FALSE,message=FALSE}
+library(plotly)
+library(widgetframe)
+```
+In the ever-growing list of talks I've suffered through, I've noticed a bizarre trend in many given by mathematicians considered "rockstars": half the talk consists of rambling about old, obscure books in their field. I'm honestly not sure if this is simply because they can get away with it because they're already famous, or because arcane tomes are a genuinely good source of information. I'm operating under the latter assumption. This post (and likely a large portion of the blog) will consist of me babbling about books I'm currently working through.
+
+The first book on the agenda is on stochastic limits, by Whitt.
+
+<img width=250px src="/~miles/img/stoch-lim/wittbook.jpg" alt="Whitt's book"/>
+
+This book isn't really old (circa 2002) or obscure, but I had recently falsely hoped to use a result in it for a paper and couldn't, so it seemed like a perfect candidate to blog about. A big theme of the book, which I love, is how do we make sense of randomness? Answer: by seeing enough of it to discern a structure. The second big point, which is a little more subtle, is that, in the long run, many underlying details don't matter. That is, we'll see that large families of distributions with similar properties ultimately look "the same" in some sense. In this post, I'll go over the most standard case, which basically is when everything goes "right." This is the setup I was most familiar with, but is necessary to establish when/how things can go wrong (which is more interesting, and will be covered in the next post).
+
+# A game of chance
+
+Consider a simple game, where at the $n$th round, you receive payoff $X_n$. Then, after $N$ rounds, the total payoff is just the sum $S_N$ defined by
+$$ S_N := X_1 + X_2 + \cdots + X_N = \sum_{n=1}^{N} X_n.$$
+Just like my actual casino experiences, we're going to play this game *a lot*, maybe because we've already lost a ton of money playing a different game. This corresponds to taking the limit $N\to\infty$ and trying to understand the behavior of $S_N$.
+
+We'll first consider the most simple scenario, where the payoff you receive is uniformly distributed between $0$ and $1$, so $X_n \sim \text{unif}(0,1)$. We can see the results of this for different values of $N$ in Figure \@ref(fig:fig1).
+```{r, include=FALSE,warning=FALSE,message=FALSE}
+library(plotly)
+library(widgetframe)
+```
+
+
+```{r fig1,echo=FALSE,tidy=TRUE,warning=FALSE,message=FALSE, fig.cap="Cumulative sums $S_n$ for $1 \\leq n \\leq N$ with $X_n \\sim \\text{unif}(0,1)$."}
+discrete_unif <- function(n){
+  xn <- runif(n, min=0,max=1);
+  yn <- c(0,cumsum(xn));
+}
+
+aval <- list()
+nvals = c(5, 10, 15,  25, 50, 100, 250, 500, 1000)
+sn <- discrete_unif(1000)
+
+l = length(nvals)
+for(i in 1:l){
+  aval[[i]] <-list(visible = FALSE,
+                      name = paste0('N = ', nvals[i]),
+                      x=0:nvals[i],
+                      y=(sn[1:(nvals[i]+1)])
+)}
+
+
+aval[[1]]$visible = TRUE
+
+
+# create steps and plot all traces
+steps <- list()
+p <- plot_ly()
+for (i in 1:l) {
+  p <- add_trace(p,x=aval[[i]]$x,  y=aval[[i]]$y, visible = aval[[i]]$visible,
+                 name = aval[[i]]$name, type='scatter', mode = 'markers', hoverinfo = aval[[i]]$y,
+                  showlegend = FALSE, marker=list(size=12,color='#16B1B5'))
+
+  step <- list(args = list('visible', rep(FALSE, length(aval))),
+               method = 'restyle',label=nvals[i])
+  step$args[[2]][i] = TRUE  
+  steps[[i]] = step
+}  
+
+# add slider control to plot
+p <- p %>%
+  layout(sliders = list(
+    list(y=-0.1,active = 0, currentvalue = list(prefix = "N= "),
+          steps = steps)
+    ), xaxis=list(title="n",titlefont=list(size=14),anchor='free',position=0.0), yaxis=list(title="Sn",titlefont=list(size=14)), title = ""
+)%>% config(displayModeBar = F)
+
+frameWidget(p, height=450)
+```
+
+What do we learn from this? The result isn't terribly surprising or interesting: as $N$ gets large, then $S_n$ approaches a line with slope $m=1/2$. Where does this $1/2$ come from? It's simply the mean payoff at each round,
+$$
+\mathbb{E}[X_i] = 1/2, \qquad X_i \sim \text{unif}(0,1).
+$$
+We can make the game a little more interesting. Since we know that, on average, you win $1/2$ each round, we can make this the cost of playing. We can then look at the net winnings, described by the quantity
+$$
+S_n - \frac{1}{2}n, \qquad S_n := X_1 + \cdots + X_n,
+$$
+where the natural generalization of this for different games is
+$$
+S_n - \mu n, \qquad \mu := \mathbb{E}[X_i].
+$$
+We then plot the net payoff of the same game
+```{r fig2,echo=FALSE,tidy=TRUE,warning=FALSE,message=FALSE, fig.cap="Net worth $S_n - n\\mu$ for $1 \\leq n \\leq N$ with $X_n \\sim \\text{unif}(0,1)$."}
+
+aval <- list()
+nvals = c(5, 10, 15,  25, 50, 100, 250, 500, 1000, 2500)
+sn <- discrete_unif(2500)-0.5*(0:2500)
+
+l = length(nvals)
+for(i in 1:l){
+  aval[[i]] <-list(visible = FALSE,
+                      name = paste0('N = ', nvals[i]),
+                      x=0:nvals[i],
+                      y=sn[1:(nvals[i]+1)])
+}
+
+aval[[1]]$visible = TRUE
+
+
+# create steps and plot all traces
+steps <- list()
+p <- plot_ly()
+for (i in 1:l) {
+  p <- add_trace(p,x=aval[[i]]$x,  y=aval[[i]]$y, visible = aval[[i]]$visible,
+                 name = aval[[i]]$name, type='scatter', mode = 'markers', hoverinfo = aval[[i]]$y,
+                  showlegend = FALSE, marker=list(size=12,color='#16B1B5'))
+
+  step <- list(args = list('visible', rep(FALSE, length(aval))),
+               method = 'restyle',label=nvals[i])
+  step$args[[2]][i] = TRUE  
+  steps[[i]] = step
+}  
+
+# add slider control to plot
+p <- p %>%
+  layout(sliders = list(
+    list(y=-0.1,active = 0, currentvalue = list(prefix = "N= "),
+          steps = steps)
+    ), xaxis=list(title="n",titlefont=list(size=14),anchor='free',position=0.0), yaxis=list(title="Sn-0.5n",titlefont=list(size=14)), title = ""
+)%>% config(displayModeBar = F)
+
+frameWidget(p, height=450)
+```
+
+## Central Limit Theorem
+
+Because we're looking at a collection of discrete objects here, there is a straightforward explanation for the behavior we're seeing: the classical Central limit theorem (CLT). The statement of CLT that is probably most familiar to most is for $X_i$ with mean $\mu$ and variance $\sigma^2$ respectively,
+
+(@foo2)$$ \label{eq:CLT}
+\lim_{N\to\infty} \sqrt{N} \left \{ \frac{1}{N} \sum_{i=1}^{N}X_i - \mu \right\} \to \mathcal{N}(0,\sigma^2),
+$$
+where $\mathcal{N}(0,\sigma^2)$ is just the standard normal (Gaussian) distribution with variance $\sigma^2$. However, if we squint at this equation, we see a remarkable similarity to what we're studying: we just need to move the $N$ around a little. Doing so, the statement relevant to us is
+$$ \lim_{N\to\infty} N^{-1/2}(S_N - \mu N) \to \mathcal{N}(0,\sigma^2).$$
+In this light, the behaviors we see in Figures \@ref(fig:fig1) and \@ref(fig:fig2) aren't terribly surprising. As we take larger and larger $N$, the behavior we get is approximately normally distributed around zero.
+
+There is a small subtlety from the CLT: because we didn't scale our net winnings by $N^{-1/2}$ like the CLT suggests, as we take larger $N$, the graphs actually get more and more widely spread out. However, this isn't the most terribly concerning feature.
+
+What *is* maybe a more important worry is: this is a statement about a discrete collection of things, but we can clearly see that in Figure \@ref(fig:fig1) and \@ref(fig:fig2), as $N$ gets larger, the plot "looks" more like a continuous function rather than a sequence of distinct dots. However, how do we make this precise?
+
+# Continuous time
+
+$S_n$ is technically only defined at $n=1,2,\ldots,N$ so even though for large $N$ it looks like all the space is filled in, many values are undefined. What do we "fill in" these blanks? Ultimately, we want to construct some function $S(t)$.
+
+One possibility, and the most simple, is to connect the dots with straight lines. That is, between $n=1,2,\ldots$ just take $S(t)$ to be the "most recent" value of $S_n$. Making this more precise, we have to specify some domain for $t$. Why not take $t = \in [0,1]$. This also alleviates the issue seen in \@ref(fig:fig1) and \@ref(fig:fig2) that the $x$-axis changes as we vary $N$.  Then, this idea of taking straight lines corresponds to defining $S(t)$ to be
+$$
+S(t) = S_{\lfloor N t \rfloor},
+$$
+where $\lfloor \cdot\rfloor$ corresponds to the floor operator. This approach seems almost too simple. What if we tried something fancier? Say, instead of making the connection between points flat, we connect them with a straight line. This is exactly the idea of  *linear interpolation* with knots $(n/N, S_n)$.
+
+We've suggested two possible ways of "connecting the dots," so which is better? We plot a comparison of these two in Figure \@ref(fig:fig3).
+
+```{r fig3,echo=FALSE,tidy=TRUE,warning=FALSE,message=FALSE, fig.cap="Two ideas for making $S_n- \\mu n$ a continuous function $S(t)$: a step function (via floor operator), or linear interpolation."}
+
+nvals = c(5, 10, 15,  25, 50, 100, 250, 500, 1000)
+aval2 <- list()
+l = length(nvals)
+sn <- discrete_unif(1000)-0.5*(0:1000)
+for(i in 1:l){
+    aval2[[i]] <-list(visible = FALSE,
+                     name = paste0('N = ', nvals[i]),
+                     x=(0:nvals[i])/nvals[i],#tvals,
+                     y=sn[1:(nvals[i]+1)])
+}
+aval2[[1]]$visible = TRUE
+# create steps and plot all traces
+steps2 <- list()
+p2 <- plot_ly()
+for (i in 1:l) {
+    p2 <- add_lines(p2,x=aval2[[i]]$x,  y=aval2[[i]]$y, visible = aval2[[i]]$visible,
+                   name = 'step', line = list(shape = "hv"),
+                   showlegend = TRUE,color=I('#16B1B5'))
+
+    step2 <- list(args = list('visible', rep(FALSE, 3*length(aval2))),
+                 method = 'restyle',label=nvals[i])
+    step2$args[[2]][i] = TRUE
+    step2$args[[2]][i+l] = TRUE    
+    step2$args[[2]][i+2*l] = TRUE    
+    steps2[[i]] = step2
+}  
+
+for (i in 1:l){
+    p2 <- add_lines(p2,x=aval2[[i]]$x,  y=aval2[[i]]$y, visible = aval2[[i]]$visible,
+                    name = 'linear interp', line = list(shape = "linear",dash='dash'),
+                    showlegend = TRUE,color=I('#fc8d62'))
+}
+
+for (i in 1:l){
+    p2 <- add_trace(p2,x=aval2[[i]]$x,  y=aval2[[i]]$y, visible = aval2[[i]]$visible,
+                   name = 'discrete sum', type='scatter', mode = 'markers',
+                   showlegend = TRUE, marker=list(size=14/(.75*(i)^(.9)),color='#8da0cb',opacity=1,layer=3))
+}
+
+# add slider control to plot
+p2 <- p2 %>%
+    layout(sliders = list(
+        list(y=-0.05,active = 0, currentvalue = list(prefix = "n= "),
+             steps = steps2)),
+        xaxis=list(title="t",titlefont=list(size=12),anchor='free',position=0.0),
+        yaxis=list(title="Sn(t)-0.5t",titlefont=list(size=12)),
+        legend = list(x = 0.1, y = 1.03,orientation = 'h', bgcolor = rgb(1,1,1,0) )
+    )%>% config(displayModeBar = F)
+
+frameWidget(p2, height=450)
+```
+What do we learn from Figure \@ref(fig:fig3)? It doesn't matter how we connect the discrete values, as ultimately, as $N$ gets large, any sane way of doing so will produce the same result.
+
+## Donsker's theorem
+
+
+
+There are an [overwhelming number](https://math.stackexchange.com/questions/345608/different-versions-of-functional-central-limit-theorem-aka-donsker-theorem) of different statements of the theorem I'm going to state, but all provide roughly the same result. Sometimes this is referred to as the **functional central limit theorem (FCLT)** because, in some sense, it's a Central limit theorem for functions!  
+
+Therefore, for concreteness, let us consider the step function version of $S(t)$ with all the bells and whistles, so
+$$
+\mathbf{S}_N(t) := N^{-1/2}\left(S_{\lfloor Nt \rfloor} - \mu \lfloor N t \rfloor\right), \quad t\in[0,1].$$
+Then, Donsker's theorem states that, in some sense^[by this, I mean in distribution, but this is where the statements vary. See the StackExchange post if you're interested in these technical details.], and under certain conditions,
+\begin{equation}
+\mathbf{S}_N(t) \rightarrow \sigma \mathbf{B}(t), \quad \text{ as } N\to\infty, (\#eq:FCLT)
+\end{equation}
+where $\mathbf{B}(t)$ is the classical **Brownian motion** defined by Gaussian behavior
+and independent increments.
+
+On an intuitive level, this connection makes quite a bit of sense because  $S_n$ was "built" by adding independent, identically distributed things, so it makes sense that we get a continuous function with independent increments. Donsker's theorem provides a deceptively rich amount of information. I'll discuss a few interesting observations, consequences, and applications.
+
+### Existence
+
+Quoting the Whitt book, "the most important thing about Brownian motion is that it exists." While I think this statement is one that clearly outs someone as a pure mathematician, it's worth noting that the fact that this limit converges to *something* and that something is Brownian motion is worth pointing out.
+
+### Self-similarity
+
+In the graphs above, you could maybe see that is that the limiting objects looked more and more self-similar, which is a well known property of Brownian motion
+$$
+\mathbf{B}(ct) = c^{-1/2}\mathbf{B}(t).
+$$
+
+
+### Functional? CLT
+
+<!-- A lot of the usefulness of Donsker's theorem comes in knowing that this limit persists through functionals of the processes. That is, for all continuous, bounded real-valued $h$,
+$$
+\mathbb{E}[h(\mathbf{S}_N)] \to \mathbb{E}[h(\sigma \mathbf{B})].
+$$ -->
+In the statement of Donsker's theorem \@ref(eq:FCLT), it's not incredibly transparent where the "functional" part of the functional central limit theorem, but in Donsker's original statement, which is equivalent to the aforementioned, this limit holds if if and only if
+$$
+g(\mathbf{S}_N) \to g(\sigma \mathbf{B})
+$$
+for **every** continuous real-valued function $g$. From these origins, I think the name is a little more clear.
+
+
+### Invariance
+
+Another thing worth pointing out is that both the CLT and FCLT are *invariance* principles. That is, in the limit, the third, fourth, and so on moments of the distribution of $X$ do not matter at all. In other words, the behavior for large $N$ is *entirely* characterized by the first two moments of $X_i,$ its mean $\mu$ and variance $\sigma^2$. That means that any distributions that have the same first two moments will be indistinguishable in the limit. This is pretty surprising, at least to me.
+
+
+### An application
+
+This application is stolen from Davar Khoshnevisan's great set of notes^[found on his website <a href="https://www.math.utah.edu/~davar/ps-pdf-files/donsker.pdf"><i class="fa fa-file-pdf-o fa-1x"></i></a>.] on Donsker's theorem. A lot of the usefulness of the theorem is in **functionals** of these processes. Basically, we can pick easy-to-study $X_i$ and study our discrete sum to discern properties about Brownian motion.
+
+Say, in our wild bout of gambling, we wanted to keep track of the proportion of time our net winnings were positive. Then, this corresponds to the quantity
+$$  
+Z_N := \frac{1}{N}\sum_{i=1}^{N} \mathbb{I}_{\left\{S_i > 0\right\}}, \qquad S_i = X_1 + \cdots + X_i,
+$$
+where $\mathbb{I}$ is just the indicator function
+$$
+\mathbb{I}_{\left\{S_i > 0\right\}} = \begin{cases} 1 & \text{if } S_i > 0 \\
+0 & \text{otherwise.}\end{cases}
+$$
+Then, (with a lot of work to prove this rigorously), intuitively this should behave the same as Brownian motion, so assuming $\mathbb{E}[X_i] =0$,
+$$
+\lim_{N\to\infty} Z_N \rightarrow \int_0^1 \mathbb{I}_{\left\{\mathbf{B}(s) > 0\right\}} \, \mathrm{d} s.
+$$
+I'll skip the details but, we know that this is true for **any** choice of $X_i$, so we can choose a very easy one, such as a simple, symmetric (Bernoulli) random walk with
+$$
+\mathbb{P}(X_i = 1) = \mathbb{P}(X_i = -1) = 1/2,
+$$
+and compute $Z_N$ explicitly, and then take $N\to\infty$, which just ends up being a combinatorial exercise. Interestingly, when you do this, you find the surprising **arcsine law**,
+$$
+\mathbb{P}\left\{ \int_0^1 \mathbb{I}_{\left\{\mathbf{B}(s) > 0\right\}} \, \mathrm{d} s \leq a\right \} = \frac{2}{\pi} \arcsin\left(\sqrt{a}\right).
+$$
+So, for instance, we could ask, what's the probability we spend at most half the time above breaking even, this corresponds to $a=1/2$ and equates to
+$$
+\mathbb{P}\left\{ \int_0^1 \mathbb{I}_{\left\{\mathbf{B}(s) > 0\right\}} \, \mathrm{d} s \leq \frac{1}{2}\right \} = \frac{2}{\pi} \arcsin\left(\sqrt{1/2}\right) = \frac{1}{2},
+$$
+which makes some sense. We have a roughly 50-50 chance of, at best breaking even half the time.
+
+
+# Things go awry
+
+I'll tease at the next post I'm planning on making, which discusses what can go wrong with everything I've talked about so far. Finding these cases is actually pretty easy. I left some key requirements out of my statement of the classical central limit theorem: $X_i$ must **independent**, and have **a finite mean and variance**. Therefore, we can cook up $X_i$ that are non-independent, or a finite mean but infinite variance, or even worse, infinite both. Then we could ask: does this converge in any sense? And if so, what to?
+
+In Figure \@ref(fig:fig4), I'm plotting one of these cases. What do you notice the limit looks like? For me, the most noticeable observation are large jumps. The FCLT converged to the most classical continuous process without jumps, so our hope is that this converges to the most classical stochastic process *with* jumps, a Lévy process. This turns out to be exactly the case! Details next time.
+```{r fig4,echo=FALSE,tidy=TRUE,warning=FALSE,message=FALSE, fig.cap="$S_n$ for $1 \\leq n \\leq N$ with $X_n \\sim \\text{pareto}(0,1.05)$."}
+
+# distribution, cdf, quantile and random functions for Pareto distributions
+dpareto <- function(x, xm, alpha) ifelse(x > xm , alpha*xm**alpha/(x**(alpha+1)), 0)
+ppareto <- function(q, xm, alpha) ifelse(q > xm , 1 - (xm/q)**alpha, 0 )
+qpareto <- function(p, xm, alpha) ifelse(p < 0 | p > 1, NaN, xm*(1-p)**(-1/alpha))
+rpareto <- function(n, xm, alpha) qpareto(runif(n), xm, alpha)
+
+discrete_pareto <- function(n,xm,alpha){
+  xn <- rpareto(n,xm=xm,alpha=alpha);
+  yn <- c(0,cumsum(xn));
+}
+
+
+
+aval <- list()
+nvals = c(5, 10, 15,  25, 50, 100, 250, 500, 1000, 2500)
+sn <- discrete_pareto(2500,1,1.05)
+
+l = length(nvals)
+for(i in 1:l){
+  aval[[i]] <-list(visible = FALSE,
+                      name = paste0('N = ', nvals[i]),
+                      x=0:nvals[i],
+                      y=sn[1:(nvals[i]+1)])
+}
+
+aval[[1]]$visible = TRUE
+
+
+# create steps and plot all traces
+steps <- list()
+p <- plot_ly()
+for (i in 1:l) {
+  p <- add_trace(p,x=aval[[i]]$x,  y=aval[[i]]$y, visible = aval[[i]]$visible,
+                 name = aval[[i]]$name, type='scatter', mode = 'markers', hoverinfo = aval[[i]]$y,
+                  showlegend = FALSE, marker=list(size=12,color='#16B1B5'))
+
+  step <- list(args = list('visible', rep(FALSE, length(aval))),
+               method = 'restyle',label=nvals[i])
+  step$args[[2]][i] = TRUE  
+  steps[[i]] = step
+}  
+
+# add slider control to plot
+p <- p %>%
+  layout(sliders = list(
+    list(y=-0.1,active = 0, currentvalue = list(prefix = "N= "),
+          steps = steps)
+    ), xaxis=list(title="n",titlefont=list(size=14),anchor='free',position=0.0), yaxis=list(title="Sn",titlefont=list(size=14)), title = ""
+)%>% config(displayModeBar = F)
+
+frameWidget(p, height=450)
+```

@@ -1,0 +1,37 @@
+---
+title: "Stenger's \"Proof\"?"
+author: Chris Miles
+date: 2017-11-01
+slug: stenger-proof
+categories:
+  - math
+tags:
+  - Riemann hypothesis
+summary: "A few months ago, Frank Stenger uploaded a [preprint](https://arxiv.org/abs/1708.01209) of a proposed proof of the Riemann hypothesis. Unlike the plethora of other attempts at famous problems, nobody seems to be talking about this. *Why?*"
+---
+
+This week, I attended a talk at the [applied math seminar](http://www.math.utah.edu/applied-math/seminar/), given by [Frank Stenger](http://www.cs.utah.edu/~stenger/). In this talk, Stenger summarized the techniques he used in his proposed proof of the Riemann hypothesis, uploaded to the arXiv [in August 2017](https://arxiv.org/abs/1708.01209).
+
+In brief, the Riemann hypothesis concerns the Riemann zeta function
+\begin{equation}
+\zeta(s) = \sum_{n=1}^{\infty} n^{-s} = \frac{1}{1^s} + \frac{1}{2^s} + \frac{1}{3^s} + \cdots,
+\end{equation}
+and its zeros, $\zeta(s^\star )=0$, stating that
+\begin{equation}
+\Re\{s^\star \} = \frac{1}{2},
+\end{equation}
+where $\Re\left\{\cdot\right\}$ denotes the real component. That is, all the zeros of $\zeta(s)$ live on the *critical line* parameterized by $\frac{1}{2}+it$. This problem is a [Millennium problem](https://www.claymath.org/millennium-problems/riemann-hypothesis), sponsored by the Clay Institute and associated with a $1 million dollar prize for solving.
+
+Stenger's proof centers around a different function, $G(z)$, defined by
+\begin{equation}
+G(z) := \int_{\mathbb{R}^+} \frac{\xi^{z-1}}{e^{\xi}+1} \, \mathrm{d} \xi,
+\end{equation}
+which is related to the *Mellin transform* of the zeta function, and is known to share the same zeros in the strip $\{z \in \mathbb{C}: 0  < \Re z < 1\}$. Stenger's proof uses Fourier analysis to study the analyticity of the function $G$ and ultimately conclude the Riemann hypothesis.
+
+Stenger's proof, and the Riemann hypothesis are *way* out of my area of expertise, so I don't have any ability to comment on the correctness, but the **response** to the proof is what surprised me, and is what I wanted to write about. Stenger gave the talk on Monday in hopes of receiving feedback. He disclosed that his reason for giving the talk was because he wanted to hear about any mistakes. However, after a few general questions, crickets stood in place of audience critiques. This seems to be the exact same reaction in the online community to his proof, but *why*?
+
+When someone (especially with a reputation of being a legitimate researcher, such as Stenger, who has 200+ papers) claims to solve a famous problem, the internet tends to clamor about it. For instance, [this](https://www.reddit.com/r/programming/comments/6tp3f0/a_solution_of_the_p_versus_np_problem/) reddit thread has over 700 responses to a proposed proof of P vs NP, a problem from computer science roughly analogous in fame to the Riemann hypothesis. Interestingly, experts in the field quickly read the paper and [identified its flaws](https://cstheory.stackexchange.com/questions/38803/is-norbert-blums-2017-proof-that-p-ne-np-correct/38811#38811).
+
+This type of response also applies to previous attempts at the Riemann hypothesis. [This](https://www.math.columbia.edu/~woit/wordpress/?p=707) blog post outlines a preprint claiming the proof in 2008, along with the shortcomings. In fact, there exists a [collection](https://empslocal.ex.ac.uk/people/staff/mrwatkin/zeta/RHproofs.htm) of failed attempts at the problem.
+
+Admittedly, Stenger's proof looks to me to be elementary relative to these past attempts and progress in this field. However, if it is indeed obviously incorrect, wouldn't it be a quick identification and explanation? Every Google search I can think of turns up no discussion whatsoever of his paper, so **why is no one talking about this?** At the time of this post, there seems to be nothing, and I'm pretty baffled as to why.
