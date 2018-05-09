@@ -34,12 +34,19 @@ weight = 5
 #    year = 2013
 
 +++
-![](img/home/motorfig.png#floatright)
-I'm currently a 5th year graduate student in the [mathematical biology research program](http://www.math.utah.edu/research/mathbio/). Later this year, I'll start a postdoc at the [Courant Institute](http://www.cims.nyu.edu).
+I've recently completed my PhD in the [mathematical biology research program](http://www.math.utah.edu/research/mathbio/). Later this year, I'll start a postdoc at the [Courant Institute](http://www.cims.nyu.edu).
 
-My interests center around using mathematics to understand how biological systems function *because* of **randomness**, rather than in spite of it. One such example (and my primary biological focus) is the utilization of **molecular motors.**
-Work I have done in this realm includes:
+<div class="homeimgs">
+  <img src="/~miles/img/home/motorfig.png"/>
+  <img src="/~miles/img/home/circ_escape.gif"/>
+  <img src="/~miles/img/home/recept.png"/>   
+</div>
 
-1. analysis of **metastable switching** in populations of motors;
-2. development of theory to study state-dependent **jump-diffusion processes**;
-3. **collaboration with experimentalists** to understand motor-driven transport data.
+My research centers around using mathematics to understand how biological systems function *because* of **randomness**, rather than *in spite* of it. 
+
+Within this realm, I have particular interests in 
+<ul class="one">
+<li> molecular motors and intracellular transport </li>
+<li> jump-diffusion processes </li>
+<li> noise in ligand-receptor signaling </li>
+</ul>

@@ -1,0 +1,127 @@
+---
+title: The true jump method
+author: Chris Miles
+date: '2018-05-01' #'2018-05-07'
+slug: true-jump-method
+categories:
+  - math
+tags: 
+  - stochastics
+  - numerics
+  - jump processes
+summary: "In htis post, I'll discuss a simulation technique for generating statistically exact jump times when the rate is state-dependent, $\\lambda(X_t)$."
+---
+
+
+
+<p>A while ago, I learned a numerical recipe for simulating state-dependent jump processes from <a href="https://arxiv.org/abs/1504.06873">this paper</a> by <a href="http://romainveltz.pythonanywhere.com/">Romain Veltz</a>. After some digging, <a href="https://www.springer.com/us/book/9783642393624">this book</a> by Graham and Talay seems to introduce the method. It’s a cute trick that even my advisor was excited by, so I figured it seemed like a nice short thing to share.</p>
+<div id="setup" class="section level1">
+<h1>Setup</h1>
+<p>Suppose we have some switching process <span class="math inline">\(X_t\)</span>, which between jump events evolves via
+<span class="math display" id="eq:PDMP">\[\begin{equation}
+\frac{\mathrm{d}}{\mathrm{d}t} X_t = F(X_t).\tag{1}
+\end{equation}\]</span>
+For simplicity, we’ll assume for now that <span class="math inline">\(F(\cdot)\)</span> is deterministic, so that our process is a piecewise-deterministic Markov process (PDMP), but I’m fairly confident that this need not be the case (discussed later).</p>
+<p>Along side this, superimpose a random switching process with intensity (rate) <span class="math inline">\(\lambda(X_t)\)</span>. The important feature here is that <span class="math inline">\(\lambda\)</span> depends on the process, which is evolving by <a href="#eq:PDMP">(1)</a>. Denote the jump times
+<span class="math display">\[\begin{equation}
+\tau_1, \tau_2, \ldots, \tau_n.
+\end{equation}\]</span></p>
+<p>A few things could happen at the jump times: <span class="math inline">\(F\)</span> could switch (as in the PDMP case) or a jump could occur in <span class="math inline">\(X_t\)</span>. However, we won’t focus on this aspect since the overall theme of this post is: how do we generate the jump times <span class="math inline">\(\tau_j\)</span>?</p>
+<div id="most-naive-technique" class="section level2">
+<h2>Most naïve technique</h2>
+<p>I’m embarrassed to admit that as an early grad student, this is how I simulated this type of process, but this technique is worth mentioning just for how bad it is.</p>
+<p>Effectively, the idea is to take fixed time steps <span class="math inline">\(\Delta t\)</span>, and each step, check whether to jump or evolve <span class="math inline">\(X_t\)</span>.</p>
+<p>In pseudocode, this looks like</p>
+<pre><code>at step i:
+    eff_rate &lt;- lambda(x(i)) # current value of the effective rate 
+    next_jump &lt;- randexp(rate) # generate an exponential rand num with this rate
+
+    if next_jump &lt; dt: # check whether jump occurred 
+        x(i+1) = # do jump procedure
+    else 
+        x(i+1) =  # evolve with F(x(i))</code></pre>
+<p>Note that this can be thought of as making the approximation that
+<span class="math display">\[\begin{equation}
+\int_{\tau_{n-1}}^{\tau_{n-1}+\Delta t} \lambda(X_t) \, \mathrm{d} t \approx \lambda(X_{\tau_{n-1}})\Delta t,
+\end{equation}\]</span>
+so we’re treating the rate as unchanging in this time step. Another thing to note is that this introduces irregular times, as the next event either occurs at time <span class="math inline">\(\Delta t\)</span> or whatever the time is to the next event. Furthermore, this technique is <em>slow</em>, as we’re doing the check at <em>every</em> time step. Overall, never do this.</p>
+</div>
+<div id="fictitious-jump-method" class="section level2">
+<h2>Fictitious jump method</h2>
+<p>Although the aforementioned technique is bad, it lays the groundwork for a much better technique called the <em>Fictitious jump method</em>. In spirit, the idea is the same: generate possible jump times and “reject” some based on probability of it actually occurring. This procedure is ubiquitous in stochastic simulation, and goes under the apt name <a href="https://en.wikipedia.org/wiki/Rejection_sampling">rejection sampling</a>.</p>
+<p>The crux of this method is finding some <span class="math inline">\(\lambda_{\infty}\)</span> such that
+<span class="math display">\[\begin{equation}
+\sup_{x \in \mathbb{R}} \lambda(x) &lt; \lambda_{\infty}.
+\end{equation}\]</span>
+That is, we want an <em>upper bound</em> for our jump rate and then use this to generate possible jump times. The algorithm is then</p>
+<div id="fictitious-jump-method-fjm" class="section level3">
+<h3>Fictitious jump method (FJM)</h3>
+<p>At step <span class="math inline">\(n\)</span>,</p>
+<ol style="list-style-type: decimal">
+<li>generate <span class="math inline">\(S_n \sim \mathcal{E}(\lambda_\infty)\)</span>, where <span class="math inline">\(\mathcal{E}\)</span> is the exponential distribution.</li>
+<li>set <span class="math inline">\(\tau_n = \tau_{n-1} + S_n\)</span></li>
+<li>evolve <span class="math inline">\(X_t = F(X_t)\)</span> for <span class="math inline">\(t \in [\tau_{n-1},\tau_{n}^-]\)</span>.</li>
+<li>either, with probability <span class="math inline">\(1-\lambda(X_{\tau_n^-})/\lambda_\infty\)</span> set <span class="math inline">\(X_{\tau_n} = X_{\tau_n^-}\)</span> (no jump occurs)
+<strong>or</strong>
+a jump occurs, and set <span class="math inline">\(X_{\tau_n}\)</span> accordingly.</li>
+</ol>
+<p>There are certainly a few perks to this technique from the previous. Note that the use of constant <span class="math inline">\(\lambda_{\infty}\)</span> allows all the times to be generated upfront (as opposed to the naïve technique where the times were generated on the fly). Because these times are generated up front, evolving <span class="math inline">\(X_t\)</span> for a known time window (step 3) is easy: basically throw it into your favorite ODE solver. This wasn’t the case in the previous method, where the jump check was performed at each time step.</p>
+<p>However, there are considerable drawbacks to FJM as well. What if <span class="math inline">\(\lambda(x)\)</span> has no obvious upper bound? Furthermore, if <span class="math inline">\(X_t\)</span> spends lot of time in a region where <span class="math inline">\(\lambda(X_t) \ll \lambda_\infty\)</span>, this technique spends most of its iterations rejecting possible jump times while taking relatively small step sizes, producing a considerably inefficient result.</p>
+<p>There are improvements that can be made to this technique, called the “sub-domain” method, which basically tries to use a local approximation of <span class="math inline">\(\lambda_\infty\)</span> based on a partitioning of the state space, but finding these partitions is non-trivial or even rarely possible.</p>
+</div>
+</div>
+</div>
+<div id="the-true-jump-method" class="section level1">
+<h1>The true jump method</h1>
+<p>While the aforementioned techniques are in reality, <em>fine</em> for simulating these processes, they have some annoying drawbacks. I’ll lastly present the <strong>true jump method</strong> (TJM), which I believe is the sweet spot of all of these, and is also the technique I use for my simulations in this context.</p>
+<p>The whole idea behind this technique is to do a clever time change. Akin to the previous methods, for a fixed next jump time <span class="math inline">\(u\)</span>, the effective <span class="math inline">\(n\)</span>th jump rate is then <span class="math inline">\(S_n\)</span>
+<span class="math display" id="eq:rateint">\[\begin{equation}
+\int_{\tau_{n-1}}^{\tau_{n-1}+u} \lambda(X_t) \, \mathrm{d}t = S_n.\tag{2}
+\end{equation}\]</span>
+However, we can think of <a href="#eq:rateint">(2)</a> in the inverse manner: if we generate <span class="math inline">\(S_n\)</span> up front, can we solve for <span class="math inline">\(u\)</span>? Rewriting it slightly
+<span class="math display">\[\begin{equation}
+\int_{\tau_{n-1}}^{\sigma(s)} \lambda(X_t) \, \mathrm{d}t = s.
+\end{equation}\]</span>
+and differentiating with respect to <span class="math inline">\(s\)</span>, we get back the ODE
+<span class="math display">\[\begin{equation}
+\dot{\sigma}(s) \lambda(X_{\sigma(s)}) = 1.
+\end{equation}\]</span>
+This, while seemingly unimpressive gives us the whole technique: we’ll perform a random time change <span class="math inline">\(t \rightarrow s\)</span> so that between jumps, the effective jump rate is always intensity <span class="math inline">\(1\)</span>.</p>
+<p>That is, define the time-changed solution to be
+<span class="math display">\[\begin{equation}
+y(s) = X_{\sigma(s)}, 
+\end{equation}\]</span>
+so that we are left with the system of equations
+<span class="math display" id="eq:TJMsyst">\[\begin{equation}
+\begin{cases} \tag{3}
+\dot{y}(s) =  F(y)/\lambda(y),\\
+\dot{\sigma}(s) = 1/\lambda(y). 
+\end{cases}
+\end{equation}\]</span></p>
+<p>In summary, the algorithm is then</p>
+<div id="true-jump-method-tjm" class="section level3">
+<h3>True jump method (TJM)</h3>
+<p>At each step <span class="math inline">\(n\)</span>,</p>
+<ol style="list-style-type: decimal">
+<li>generate <span class="math inline">\(S_n \sim \mathcal{E}(1)\)</span>, where <span class="math inline">\(\mathcal{E}\)</span> is the exponential distribution.</li>
+<li>Set <span class="math inline">\(y(0) = X_{\tau_{n-1}}\)</span> and evolve the system <a href="#eq:TJMsyst">(3)</a> for <span class="math inline">\(y(s), \sigma(s)\)</span> for <span class="math inline">\(s \in [0,1]\)</span>.</li>
+<li>Set <span class="math inline">\(\tau_{n} = \tau_{n-1}+\sigma(1)\)</span> and the solution before the jump is <span class="math inline">\(X_t = X_{\sigma(s)}\)</span>.</li>
+<li>Perform the jump procedure on <span class="math inline">\(X_{\tau_n}\)</span>.</li>
+</ol>
+<p>Notice that this procedure has basically all the benefits of the previous with none of the drawbacks. For one, all the random times <span class="math inline">\(S_n\)</span> can be generated up front easily. Between them, evolving the system <a href="#eq:TJMsyst">(3)</a> can be done with any pre-canned solver (e.g. <code>ode45</code>) without further thought. This technique does not require that <span class="math inline">\(\lambda(x)\)</span> is bounded, so long as there isn’t any explosion.</p>
+<p>Overall, I think the TJM is elegant, simple, and a worthwhile time investment for anyone that regularly does these types of simulations.</p>
+</div>
+<div id="final-thoughts" class="section level2">
+<h2>Final thoughts</h2>
+<p>One particularly nice thing about TJM is that it can be extended easily to do a Gillespie-type simulation with multiple possible jumps. That is, suppose at any given step we had <span class="math inline">\(j\)</span> possible transitions, indexed by their rates <span class="math inline">\(\lambda_1, \lambda_2, \ldots, \lambda_j\)</span>. Then, in the TJM algorithm, we just replace
+<span class="math display">\[\begin{equation}
+\lambda_{tot}(x) = \sum_j \lambda_j(x)
+\end{equation}\]</span>
+and the algorithm is exactly the same. At the jump times, we perform a Gillespie selection of which “reaction” to choose, by assigning relative probabilities
+<span class="math display">\[\begin{equation}
+p_j := \frac{\lambda_j(X_{\tau_n})}{\lambda_{tot}(X_{\tau_n})}
+\end{equation}\]</span>
+and sampling from this distribution to choose the appropriate reaction.</p>
+<p>Note that at no point in the analysis did we require that <span class="math inline">\(F\)</span> be deterministic. Consequently, either technique is totally valid for jump-SDEs. For instance, <a href="https://link.aps.org/doi/10.1103/PhysRevE.96.012129">Lawley and Bressloff</a> use the FJM (which they refer to as thinning) for Brownian motion with switching diffusion coefficient <span class="math inline">\(D\)</span>.</p>
+</div>
+</div>

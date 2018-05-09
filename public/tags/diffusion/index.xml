@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Diffusion on Chris Miles</title>
+    <link>/~miles/tags/diffusion/</link>
+    <description>Recent content in Diffusion on Chris Miles</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Wed, 06 Dec 2017 00:00:00 +0000</lastBuildDate>
+    
+	<atom:link href="/~miles/tags/diffusion/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Diffusing diffusivities, stochastic subordination</title>
+      <link>/~miles/post/diff-diff/</link>
+      <pubDate>Wed, 06 Dec 2017 00:00:00 +0000</pubDate>
+      
+      <guid>/~miles/post/diff-diff/</guid>
+      <description>In this post, I’ll discuss an idea emerging in the statistical physics community that attempts to resolve some unexplained observations of motion of single particles.1
+Anomalous yet Brownian The motivation is as follows: suppose we observe two particles and keep track of their trajectory, as seen in Figure 1.
+  {&#34;x&#34;:{&#34;url&#34;:&#34;/~miles/post/2017-10-19-diff-diff_files/figure-html//widgets/widget_fig1.html&#34;,&#34;options&#34;:{&#34;xdomain&#34;:&#34;*&#34;,&#34;allowfullscreen&#34;:false,&#34;lazyload&#34;:false}},&#34;evals&#34;:[],&#34;jsHooks&#34;:[]} Figure 1: Two (simulated) trajectories of particles undergoing what seems to be classical Brownian motion (diffusion).</description>
+    </item>
+    
+  </channel>
+</rss>

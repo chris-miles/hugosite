@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="theme" content="hugo-academic">
+  <meta name="generator" content="Hugo 0.40" />
+  <meta name="author" content="Chris Miles">
+
+  
+  
+  
+  
+    
+      
+    
+  
+  <meta name="description" content="A while ago, I learned a numerical recipe for simulating state-dependent jump processes from this paper by Romain Veltz. After some digging, this book by Graham and Talay seems to introduce the method. It’s a cute trick that even my advisor was excited by, so I figured it seemed like a nice short thing to share.
+Setup Suppose we have some switching process \(X_t\), which between jump events evolves via \[\begin{equation} \frac{\mathrm{d}}{\mathrm{d}t} X_t = F(X_t).">
+
+  
+  <link rel="alternate" hreflang="en-us" href="/~miles/post/true-jump-method/">
+
+  
+
+
+  
+
+  
+  
+  <meta name="theme-color" content="#16B1B5">
+  
+  
+  
+  
+    
+  
+  
+    
+    
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css">
+    
+  
+  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha512-6MXa8B6uaO18Hid6blRMetEIoPqHf7Ux1tnyIQdpt9qI5OACx7C+O3IVTr98vwGnlcg0LOLa02i9Y1HpVhlfiw==" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/academicons/1.8.1/css/academicons.min.css" integrity="sha512-NThgw3XKQ1absAahW6to7Ey42uycrVvfNfyjqcFNgCmOCQ5AR4AO0SiXrN+8ZtYeappp56lk1WtvjVmEa+VR6A==" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha512-SfTiTlX6kk+qitfevl/7LibUOeJWlt9rbyDn92a1DqWOw9vWG2MFoays0sgObmWazO5BQPiFucnnEAjpAB+/Sw==" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.css" integrity="sha256-ygkqlh3CYSUri3LhQxzdcm0n1EQvH2Y+U5S2idbLtxs=" crossorigin="anonymous">
+  
+  
+  
+  
+  <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Nunito:400,700%7cOpen&#43;Sans:400,700%7cLato:400,700%7cOpen&#43;Sans:400,700%7cRoboto&#43;Mono:400,700%7cRaleway:400,700">
+  
+  <link rel="stylesheet" href="/~miles/styles.css">
+  
+  <link rel="stylesheet" href="/~miles/css/custom.css">
+  
+
+  
+    <script>
+      window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+      ga('create', 'UA-41280789-2', 'auto');
+      ga('require', 'eventTracker');
+      ga('require', 'outboundLinkTracker');
+      ga('require', 'urlChangeTracker');
+      ga('send', 'pageview');
+    </script>
+    <script async src="//www.google-analytics.com/analytics.js"></script>
+    
+    <script async src="https://cdnjs.cloudflare.com/ajax/libs/autotrack/2.4.1/autotrack.js" integrity="sha512-HUmooslVKj4m6OBu0OgzjXXr+QuFYy/k7eLI5jdeEy/F4RSgMn6XRWRGkFi5IFaFgy7uFTkegp3Z0XnJf3Jq+g==" crossorigin="anonymous"></script>
+    
+  
+
+  
+  <link rel="alternate" href="/~miles/index.xml" type="application/rss+xml" title="Chris Miles">
+  <link rel="feed" href="/~miles/index.xml" type="application/rss+xml" title="Chris Miles">
+  
+
+  <link rel="manifest" href="/~miles/site.webmanifest">
+  <link rel="icon" type="image/png" href="/~miles/img/icon.png">
+  <link rel="apple-touch-icon" type="image/png" href="/~miles/img/icon-192.png">
+
+  <link rel="canonical" href="/~miles/post/true-jump-method/">
+
+  <meta property="twitter:card" content="summary_large_image">
+  
+  <meta property="og:site_name" content="Chris Miles">
+  <meta property="og:url" content="/~miles/post/true-jump-method/">
+  <meta property="og:title" content="The true jump method | Chris Miles">
+  <meta property="og:description" content="A while ago, I learned a numerical recipe for simulating state-dependent jump processes from this paper by Romain Veltz. After some digging, this book by Graham and Talay seems to introduce the method. It’s a cute trick that even my advisor was excited by, so I figured it seemed like a nice short thing to share.
+Setup Suppose we have some switching process \(X_t\), which between jump events evolves via \[\begin{equation} \frac{\mathrm{d}}{\mathrm{d}t} X_t = F(X_t).">
+  <meta property="og:locale" content="en-us">
+  
+  <meta property="article:published_time" content="2018-05-01T00:00:00&#43;00:00">
+  
+  <meta property="article:modified_time" content="2018-05-01T00:00:00&#43;00:00">
+  
+
+  
+
+  <title>The true jump method | Chris Miles</title>
+
+</head>
+<body id="top" data-spy="scroll" data-target="#toc" data-offset="71" >
+
+<nav class="navbar navbar-default navbar-fixed-top" id="navbar-main">
+  <div class="container">
+
+    
+    <div class="navbar-header">
+      
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse"
+              data-target=".navbar-collapse" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      
+      <a class="navbar-brand" href="/~miles/">Chris Miles</a>
+    </div>
+
+    
+    <div class="collapse navbar-collapse">
+
+      
+      
+      <ul class="nav navbar-nav navbar-right">
+        
+
+        
+        
+        
+        
+        
+          
+        
+
+        <li class="nav-item">
+          <a href="/~miles/#about">
+            
+            <span>Home</span>
+            
+          </a>
+        </li>
+
+        
+        
+
+        
+        
+        
+        
+        
+          
+        
+
+        <li class="nav-item">
+          <a href="/~miles/#publications">
+            
+            <span>Publications</span>
+            
+          </a>
+        </li>
+
+        
+        
+
+        
+        
+        
+        
+        
+          
+        
+
+        <li class="nav-item">
+          <a href="/~miles/#teachoutreach">
+            
+            <span>Teaching &amp; Outreach</span>
+            
+          </a>
+        </li>
+
+        
+        
+
+        
+        
+        
+        
+        
+          
+        
+
+        <li class="nav-item">
+          <a href="/~miles/#posts">
+            
+            <span>Blog</span>
+            
+          </a>
+        </li>
+
+        
+        
+
+        
+        
+        
+        
+        
+          
+        
+
+        <li class="nav-item">
+          <a href="/~miles/#contact">
+            
+            <span>Contact</span>
+            
+          </a>
+        </li>
+
+        
+        
+      
+
+      
+      </ul>
+
+    </div>
+  </div>
+</nav>
+
+
+<article class="article" itemscope itemtype="http://schema.org/Article">
+
+  
+
+
+  <div class="article-container">
+    <h1 itemprop="name">The true jump method</h1>
+
+    
+
+<div class="article-metadata">
+
+  <span class="article-date">
+    
+    <time datetime="2018-05-01 00:00:00 &#43;0000 UTC" itemprop="datePublished dateModified">
+      May 1, 2018
+    </time>
+  </span>
+  <span itemscope itemprop="author publisher" itemtype="http://schema.org/Person">
+    <meta itemprop="name" content="Chris Miles">
+  </span>
+
+  
+
+  
+  
+
+  
+  
+  
+  <span class="middot-divider"></span>
+  <span class="article-categories">
+    <i class="fa fa-folder"></i>
+    
+    <a href="/~miles/categories/math">math</a
+    >
+    
+  </span>
+  
+  
+
+  
+  
+<div class="share-box" aria-hidden="true">
+  <ul class="share">
+    <li>
+      <a class="twitter"
+         href="https://twitter.com/intent/tweet?text=The%20true%20jump%20method&amp;url=%2f~miles%2fpost%2ftrue-jump-method%2f"
+         target="_blank" rel="noopener">
+        <i class="fa fa-twitter"></i>
+      </a>
+    </li>
+    <li>
+      <a class="facebook"
+         href="https://www.facebook.com/sharer.php?u=%2f~miles%2fpost%2ftrue-jump-method%2f"
+         target="_blank" rel="noopener">
+        <i class="fa fa-facebook"></i>
+      </a>
+    </li>
+    <li>
+      <a class="linkedin"
+         href="https://www.linkedin.com/shareArticle?mini=true&amp;url=%2f~miles%2fpost%2ftrue-jump-method%2f&amp;title=The%20true%20jump%20method"
+         target="_blank" rel="noopener">
+        <i class="fa fa-linkedin"></i>
+      </a>
+    </li>
+    <li>
+      <a class="weibo"
+         href="http://service.weibo.com/share/share.php?url=%2f~miles%2fpost%2ftrue-jump-method%2f&amp;title=The%20true%20jump%20method"
+         target="_blank" rel="noopener">
+        <i class="fa fa-weibo"></i>
+      </a>
+    </li>
+    <li>
+      <a class="email"
+         href="mailto:?subject=The%20true%20jump%20method&amp;body=%2f~miles%2fpost%2ftrue-jump-method%2f">
+        <i class="fa fa-envelope"></i>
+      </a>
+    </li>
+  </ul>
+</div>
+
+
+  
+
+</div>
+
+
+    <div class="article-style" itemprop="articleBody">
+      <p>A while ago, I learned a numerical recipe for simulating state-dependent jump processes from <a href="https://arxiv.org/abs/1504.06873">this paper</a> by <a href="http://romainveltz.pythonanywhere.com/">Romain Veltz</a>. After some digging, <a href="https://www.springer.com/us/book/9783642393624">this book</a> by Graham and Talay seems to introduce the method. It’s a cute trick that even my advisor was excited by, so I figured it seemed like a nice short thing to share.</p>
+<div id="setup" class="section level1">
+<h1>Setup</h1>
+<p>Suppose we have some switching process <span class="math inline">\(X_t\)</span>, which between jump events evolves via
+<span class="math display" id="eq:PDMP">\[\begin{equation}
+\frac{\mathrm{d}}{\mathrm{d}t} X_t = F(X_t).\tag{1}
+\end{equation}\]</span>
+For simplicity, we’ll assume for now that <span class="math inline">\(F(\cdot)\)</span> is deterministic, so that our process is a piecewise-deterministic Markov process (PDMP), but I’m fairly confident that this need not be the case (discussed later).</p>
+<p>Along side this, superimpose a random switching process with intensity (rate) <span class="math inline">\(\lambda(X_t)\)</span>. The important feature here is that <span class="math inline">\(\lambda\)</span> depends on the process, which is evolving by <a href="#eq:PDMP">(1)</a>. Denote the jump times
+<span class="math display">\[\begin{equation}
+\tau_1, \tau_2, \ldots, \tau_n.
+\end{equation}\]</span></p>
+<p>A few things could happen at the jump times: <span class="math inline">\(F\)</span> could switch (as in the PDMP case) or a jump could occur in <span class="math inline">\(X_t\)</span>. However, we won’t focus on this aspect since the overall theme of this post is: how do we generate the jump times <span class="math inline">\(\tau_j\)</span>?</p>
+<div id="most-naive-technique" class="section level2">
+<h2>Most naïve technique</h2>
+<p>I’m embarrassed to admit that as an early grad student, this is how I simulated this type of process, but this technique is worth mentioning just for how bad it is.</p>
+<p>Effectively, the idea is to take fixed time steps <span class="math inline">\(\Delta t\)</span>, and each step, check whether to jump or evolve <span class="math inline">\(X_t\)</span>.</p>
+<p>In pseudocode, this looks like</p>
+<pre><code>at step i:
+    eff_rate &lt;- lambda(x(i)) # current value of the effective rate 
+    next_jump &lt;- randexp(rate) # generate an exponential rand num with this rate
+
+    if next_jump &lt; dt: # check whether jump occurred 
+        x(i+1) = # do jump procedure
+    else 
+        x(i+1) =  # evolve with F(x(i))</code></pre>
+<p>Note that this can be thought of as making the approximation that
+<span class="math display">\[\begin{equation}
+\int_{\tau_{n-1}}^{\tau_{n-1}+\Delta t} \lambda(X_t) \, \mathrm{d} t \approx \lambda(X_{\tau_{n-1}})\Delta t,
+\end{equation}\]</span>
+so we’re treating the rate as unchanging in this time step. Another thing to note is that this introduces irregular times, as the next event either occurs at time <span class="math inline">\(\Delta t\)</span> or whatever the time is to the next event. Furthermore, this technique is <em>slow</em>, as we’re doing the check at <em>every</em> time step. Overall, never do this.</p>
+</div>
+<div id="fictitious-jump-method" class="section level2">
+<h2>Fictitious jump method</h2>
+<p>Although the aforementioned technique is bad, it lays the groundwork for a much better technique called the <em>Fictitious jump method</em>. In spirit, the idea is the same: generate possible jump times and “reject” some based on probability of it actually occurring. This procedure is ubiquitous in stochastic simulation, and goes under the apt name <a href="https://en.wikipedia.org/wiki/Rejection_sampling">rejection sampling</a>.</p>
+<p>The crux of this method is finding some <span class="math inline">\(\lambda_{\infty}\)</span> such that
+<span class="math display">\[\begin{equation}
+\sup_{x \in \mathbb{R}} \lambda(x) &lt; \lambda_{\infty}.
+\end{equation}\]</span>
+That is, we want an <em>upper bound</em> for our jump rate and then use this to generate possible jump times. The algorithm is then</p>
+<div id="fictitious-jump-method-fjm" class="section level3">
+<h3>Fictitious jump method (FJM)</h3>
+<p>At step <span class="math inline">\(n\)</span>,</p>
+<ol style="list-style-type: decimal">
+<li>generate <span class="math inline">\(S_n \sim \mathcal{E}(\lambda_\infty)\)</span>, where <span class="math inline">\(\mathcal{E}\)</span> is the exponential distribution.</li>
+<li>set <span class="math inline">\(\tau_n = \tau_{n-1} + S_n\)</span></li>
+<li>evolve <span class="math inline">\(X_t = F(X_t)\)</span> for <span class="math inline">\(t \in [\tau_{n-1},\tau_{n}^-]\)</span>.</li>
+<li>either, with probability <span class="math inline">\(1-\lambda(X_{\tau_n^-})/\lambda_\infty\)</span> set <span class="math inline">\(X_{\tau_n} = X_{\tau_n^-}\)</span> (no jump occurs)
+<strong>or</strong>
+a jump occurs, and set <span class="math inline">\(X_{\tau_n}\)</span> accordingly.</li>
+</ol>
+<p>There are certainly a few perks to this technique from the previous. Note that the use of constant <span class="math inline">\(\lambda_{\infty}\)</span> allows all the times to be generated upfront (as opposed to the naïve technique where the times were generated on the fly). Because these times are generated up front, evolving <span class="math inline">\(X_t\)</span> for a known time window (step 3) is easy: basically throw it into your favorite ODE solver. This wasn’t the case in the previous method, where the jump check was performed at each time step.</p>
+<p>However, there are considerable drawbacks to FJM as well. What if <span class="math inline">\(\lambda(x)\)</span> has no obvious upper bound? Furthermore, if <span class="math inline">\(X_t\)</span> spends lot of time in a region where <span class="math inline">\(\lambda(X_t) \ll \lambda_\infty\)</span>, this technique spends most of its iterations rejecting possible jump times while taking relatively small step sizes, producing a considerably inefficient result.</p>
+<p>There are improvements that can be made to this technique, called the “sub-domain” method, which basically tries to use a local approximation of <span class="math inline">\(\lambda_\infty\)</span> based on a partitioning of the state space, but finding these partitions is non-trivial or even rarely possible.</p>
+</div>
+</div>
+</div>
+<div id="the-true-jump-method" class="section level1">
+<h1>The true jump method</h1>
+<p>While the aforementioned techniques are in reality, <em>fine</em> for simulating these processes, they have some annoying drawbacks. I’ll lastly present the <strong>true jump method</strong> (TJM), which I believe is the sweet spot of all of these, and is also the technique I use for my simulations in this context.</p>
+<p>The whole idea behind this technique is to do a clever time change. Akin to the previous methods, for a fixed next jump time <span class="math inline">\(u\)</span>, the effective <span class="math inline">\(n\)</span>th jump rate is then <span class="math inline">\(S_n\)</span>
+<span class="math display" id="eq:rateint">\[\begin{equation}
+\int_{\tau_{n-1}}^{\tau_{n-1}+u} \lambda(X_t) \, \mathrm{d}t = S_n.\tag{2}
+\end{equation}\]</span>
+However, we can think of <a href="#eq:rateint">(2)</a> in the inverse manner: if we generate <span class="math inline">\(S_n\)</span> up front, can we solve for <span class="math inline">\(u\)</span>? Rewriting it slightly
+<span class="math display">\[\begin{equation}
+\int_{\tau_{n-1}}^{\sigma(s)} \lambda(X_t) \, \mathrm{d}t = s.
+\end{equation}\]</span>
+and differentiating with respect to <span class="math inline">\(s\)</span>, we get back the ODE
+<span class="math display">\[\begin{equation}
+\dot{\sigma}(s) \lambda(X_{\sigma(s)}) = 1.
+\end{equation}\]</span>
+This, while seemingly unimpressive gives us the whole technique: we’ll perform a random time change <span class="math inline">\(t \rightarrow s\)</span> so that between jumps, the effective jump rate is always intensity <span class="math inline">\(1\)</span>.</p>
+<p>That is, define the time-changed solution to be
+<span class="math display">\[\begin{equation}
+y(s) = X_{\sigma(s)}, 
+\end{equation}\]</span>
+so that we are left with the system of equations
+<span class="math display" id="eq:TJMsyst">\[\begin{equation}
+\begin{cases} \tag{3}
+\dot{y}(s) =  F(y)/\lambda(y),\\
+\dot{\sigma}(s) = 1/\lambda(y). 
+\end{cases}
+\end{equation}\]</span></p>
+<p>In summary, the algorithm is then</p>
+<div id="true-jump-method-tjm" class="section level3">
+<h3>True jump method (TJM)</h3>
+<p>At each step <span class="math inline">\(n\)</span>,</p>
+<ol style="list-style-type: decimal">
+<li>generate <span class="math inline">\(S_n \sim \mathcal{E}(1)\)</span>, where <span class="math inline">\(\mathcal{E}\)</span> is the exponential distribution.</li>
+<li>Set <span class="math inline">\(y(0) = X_{\tau_{n-1}}\)</span> and evolve the system <a href="#eq:TJMsyst">(3)</a> for <span class="math inline">\(y(s), \sigma(s)\)</span> for <span class="math inline">\(s \in [0,1]\)</span>.</li>
+<li>Set <span class="math inline">\(\tau_{n} = \tau_{n-1}+\sigma(1)\)</span> and the solution before the jump is <span class="math inline">\(X_t = X_{\sigma(s)}\)</span>.</li>
+<li>Perform the jump procedure on <span class="math inline">\(X_{\tau_n}\)</span>.</li>
+</ol>
+<p>Notice that this procedure has basically all the benefits of the previous with none of the drawbacks. For one, all the random times <span class="math inline">\(S_n\)</span> can be generated up front easily. Between them, evolving the system <a href="#eq:TJMsyst">(3)</a> can be done with any pre-canned solver (e.g. <code>ode45</code>) without further thought. This technique does not require that <span class="math inline">\(\lambda(x)\)</span> is bounded, so long as there isn’t any explosion.</p>
+<p>Overall, I think the TJM is elegant, simple, and a worthwhile time investment for anyone that regularly does these types of simulations.</p>
+</div>
+<div id="final-thoughts" class="section level2">
+<h2>Final thoughts</h2>
+<p>One particularly nice thing about TJM is that it can be extended easily to do a Gillespie-type simulation with multiple possible jumps. That is, suppose at any given step we had <span class="math inline">\(j\)</span> possible transitions, indexed by their rates <span class="math inline">\(\lambda_1, \lambda_2, \ldots, \lambda_j\)</span>. Then, in the TJM algorithm, we just replace
+<span class="math display">\[\begin{equation}
+\lambda_{tot}(x) = \sum_j \lambda_j(x)
+\end{equation}\]</span>
+and the algorithm is exactly the same. At the jump times, we perform a Gillespie selection of which “reaction” to choose, by assigning relative probabilities
+<span class="math display">\[\begin{equation}
+p_j := \frac{\lambda_j(X_{\tau_n})}{\lambda_{tot}(X_{\tau_n})}
+\end{equation}\]</span>
+and sampling from this distribution to choose the appropriate reaction.</p>
+<p>Note that at no point in the analysis did we require that <span class="math inline">\(F\)</span> be deterministic. Consequently, either technique is totally valid for jump-SDEs. For instance, <a href="https://link.aps.org/doi/10.1103/PhysRevE.96.012129">Lawley and Bressloff</a> use the FJM (which they refer to as thinning) for Brownian motion with switching diffusion coefficient <span class="math inline">\(D\)</span>.</p>
+</div>
+</div>
+
+    </div>
+
+    
+
+
+<div class="article-tags">
+  
+  <a class="btn btn-primary btn-outline" href="/~miles/tags/stochastics">stochastics</a>
+  
+  <a class="btn btn-primary btn-outline" href="/~miles/tags/numerics">numerics</a>
+  
+  <a class="btn btn-primary btn-outline" href="/~miles/tags/jump-processes">jump processes</a>
+  
+</div>
+
+
+
+
+    
+    
+    <div class="article-widget">
+      <div class="hr-light"></div>
+      <h3>Related</h3>
+      <ul>
+        
+        <li><a href="/~miles/post/operator-splitting/">Operator splitting</a></li>
+        
+        <li><a href="/~miles/post/diff-diff/">Diffusing diffusivities, stochastic subordination</a></li>
+        
+        <li><a href="/~miles/post/stoch-lim-part-2/">Stochastic limits, part 2: tails, memory, and the Joseph and Noah effects</a></li>
+        
+        <li><a href="/~miles/post/stoch-lim-part-1/">Stochastic limits, part 1: CLT,  Donsker’s FCLT</a></li>
+        
+      </ul>
+    </div>
+    
+
+    
+
+    
+<section id="comments">
+  <div id="disqus_thread"></div>
+<script>
+    var disqus_config = function () {
+    
+    
+    
+    };
+    (function() {
+        if (["localhost", "127.0.0.1"].indexOf(window.location.hostname) != -1) {
+            document.getElementById('disqus_thread').innerHTML = 'Disqus comments not available by default when the website is previewed locally.';
+            return;
+        }
+        var d = document, s = d.createElement('script'); s.async = true;
+        s.src = '//' + "chris-miles" + '.disqus.com/embed.js';
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="https://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+</section>
+
+
+
+  </div>
+</article>
+
+<footer class="site-footer">
+  <div class="container">
+    <p class="powered-by">
+
+      
+
+      Powered by <a href="http://gohugo.io" target="_blank">Hugo</a> and <a href="https://github.com/rstudio/blogdown">blogdown</a>. Theme modified from <a href="https://github.com/gcushen/hugo-academic" target="_blank">Academic</a>.
+
+      <span class="pull-right" aria-hidden="true">
+        <a href="#" id="back_to_top">
+          <span class="button_icon">
+            <i class="fa fa-chevron-up fa-2x"></i>
+          </span>
+        </a>
+      </span>
+
+    </p>
+  </div>
+</footer>
+
+    
+
+    
+    
+
+    
+    <script async defer src="//maps.googleapis.com/maps/api/js?key=AIzaSyAO2mRpc3ZIj4fOGT2eUl6ChBHwffpqHnw"></script>
+    
+
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js" integrity="sha512-3P8rXCuGJdNZOnUx/03c1jOTnMn3rP63nBip5gOP2qmUh5YAdVAvFZ1E+QLZZbC1rtMrQb+mah3AfYW11RUrWA==" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.imagesloaded/4.1.3/imagesloaded.pkgd.min.js" integrity="sha512-umsR78NN0D23AzgoZ11K7raBD+R6hqKojyBZs1w8WvYlsI+QuKRGBx3LFCwhatzBunCjDuJpDHwxD13sLMbpRA==" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha512-iztkobsvnjKfAtTNdHkGVjAYTrrtlC7mGp/54c40wowO7LhURYl3gVzzcEqGl/qKXQltJ2HwMrdLcNUdo+N/RQ==" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.isotope/3.0.4/isotope.pkgd.min.js" integrity="sha512-VDBOIlDbuC4VWxGJNmuFRQ0Li0SKkDpmGyuhAG5LTDLd/dJ/S0WMVxriR2Y+CyPL5gzjpN4f/6iqWVBJlht0tQ==" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.js" integrity="sha256-X5PoE3KU5l+JcX+w09p/wHl9AzK333C4hJ2I9S5mD4M=" crossorigin="anonymous"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gmaps.js/0.4.25/gmaps.min.js" integrity="sha256-7vjlAeb8OaTrCXZkCNun9djzuB2owUsaO72kXaFDBJs=" crossorigin="anonymous"></script>
+    
+    
+    <script src="/~miles/js/hugo-academic.js"></script>
+    
+    <script src="/~miles/js/custom.js"></script>
+    
+
+    
+    
+      
+      
+      <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js" integrity="sha256-/BfiIkHlHoVihZdc6TFuj7MmJ0TWcWsMXkeDFwhi0zw=" crossorigin="anonymous"></script>
+      
+
+      
+      <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/languages/python.min.js"></script>
+      
+      <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/languages/r.min.js"></script>
+      
+
+      
+
+      <script>hljs.initHighlightingOnLoad();</script>
+    
+
+    
+    
+    <script type="text/x-mathjax-config">
+        MathJax.Hub.Config({ tex2jax: { inlineMath: [['$','$'], ['\\(','\\)']] } });
+    </script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS_CHTML" integrity="sha512-tOav5w1OjvsSJzePRtt2uQPFwBoHt1VZcUq8l8nm5284LEKE9FSJBQryzMBzHxY5P0zRdNqEcpLIRVYFNgu1jw==" crossorigin="anonymous"></script>
+    
+    
+
+  </body>
+</html>
+

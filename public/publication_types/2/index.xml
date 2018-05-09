@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>2 on Chris Miles</title>
+    <link>/~miles/publication_types/2/</link>
+    <description>Recent content in 2 on Chris Miles</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Tue, 22 Aug 2017 00:00:00 +0000</lastBuildDate>
+    
+	<atom:link href="/~miles/publication_types/2/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Jump locations of jump-diffusion processes with state-dependent rates</title>
+      <link>/~miles/publication/jumplocs/</link>
+      <pubDate>Tue, 22 Aug 2017 00:00:00 +0000</pubDate>
+      
+      <guid>/~miles/publication/jumplocs/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Bidirectionality from cargo thermal fluctuations in motor-mediated transport</title>
+      <link>/~miles/publication/bidirectional/</link>
+      <pubDate>Fri, 07 Jul 2017 00:00:00 +0000</pubDate>
+      
+      <guid>/~miles/publication/bidirectional/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Differential Equations on Chris Miles</title>
+    <link>/~miles/tags/differential-equations/</link>
+    <description>Recent content in Differential Equations on Chris Miles</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Fri, 02 Mar 2018 00:00:00 +0000</lastBuildDate>
+    
+	<atom:link href="/~miles/tags/differential-equations/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Operator splitting</title>
+      <link>/~miles/post/operator-splitting/</link>
+      <pubDate>Fri, 02 Mar 2018 00:00:00 +0000</pubDate>
+      
+      <guid>/~miles/post/operator-splitting/</guid>
+      <description>I stumbled across the recent paper “Efficient Reactive Brownian Dynamics”, which proposes a reaction-diffusion scheme based on a technique called Strang splitting. While I was vaguely familiar with the notion of splitting, I wanted to write up this post to think out some of the details I hadn’t previously.
+The reaction-diffusion scheme is a perfect context to understand splitting because there are effectively two (coupled, but distinct) dynamics going on: diffusion and reactions.</description>
+    </item>
+    
+  </channel>
+</rss>

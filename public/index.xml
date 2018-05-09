@@ -2,7 +2,7 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Chris Miles on Chris Miles</title>
-    <link>http://www.math.utah.edu/~miles/</link>
+    <link>/~miles/</link>
     <description>Recent content in Chris Miles on Chris Miles</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
@@ -10,14 +10,134 @@
     <atom:link href="/~miles/" rel="self" type="application/rss+xml" />
     
     <item>
+      <title>The true jump method</title>
+      <link>/~miles/post/true-jump-method/</link>
+      <pubDate>Tue, 01 May 2018 00:00:00 +0000</pubDate>
+      
+      <guid>/~miles/post/true-jump-method/</guid>
+      <description>&lt;p&gt;A while ago, I learned a numerical recipe for simulating state-dependent jump processes from &lt;a href=&#34;https://arxiv.org/abs/1504.06873&#34;&gt;this paper&lt;/a&gt; by &lt;a href=&#34;http://romainveltz.pythonanywhere.com/&#34;&gt;Romain Veltz&lt;/a&gt;. After some digging, &lt;a href=&#34;https://www.springer.com/us/book/9783642393624&#34;&gt;this book&lt;/a&gt; by Graham and Talay seems to introduce the method. It’s a cute trick that even my advisor was excited by, so I figured it seemed like a nice short thing to share.&lt;/p&gt;
+&lt;div id=&#34;setup&#34; class=&#34;section level1&#34;&gt;
+&lt;h1&gt;Setup&lt;/h1&gt;
+&lt;p&gt;Suppose we have some switching process &lt;span class=&#34;math inline&#34;&gt;\(X_t\)&lt;/span&gt;, which between jump events evolves via
+&lt;span class=&#34;math display&#34; id=&#34;eq:PDMP&#34;&gt;\[\begin{equation}
+\frac{\mathrm{d}}{\mathrm{d}t} X_t = F(X_t).\tag{1}
+\end{equation}\]&lt;/span&gt;
+For simplicity, we’ll assume for now that &lt;span class=&#34;math inline&#34;&gt;\(F(\cdot)\)&lt;/span&gt; is deterministic, so that our process is a piecewise-deterministic Markov process (PDMP), but I’m fairly confident that this need not be the case (discussed later).&lt;/p&gt;
+&lt;p&gt;Along side this, superimpose a random switching process with intensity (rate) &lt;span class=&#34;math inline&#34;&gt;\(\lambda(X_t)\)&lt;/span&gt;. The important feature here is that &lt;span class=&#34;math inline&#34;&gt;\(\lambda\)&lt;/span&gt; depends on the process, which is evolving by &lt;a href=&#34;#eq:PDMP&#34;&gt;(1)&lt;/a&gt;. Denote the jump times
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+\tau_1, \tau_2, \ldots, \tau_n.
+\end{equation}\]&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;A few things could happen at the jump times: &lt;span class=&#34;math inline&#34;&gt;\(F\)&lt;/span&gt; could switch (as in the PDMP case) or a jump could occur in &lt;span class=&#34;math inline&#34;&gt;\(X_t\)&lt;/span&gt;. However, we won’t focus on this aspect since the overall theme of this post is: how do we generate the jump times &lt;span class=&#34;math inline&#34;&gt;\(\tau_j\)&lt;/span&gt;?&lt;/p&gt;
+&lt;div id=&#34;most-naive-technique&#34; class=&#34;section level2&#34;&gt;
+&lt;h2&gt;Most naïve technique&lt;/h2&gt;
+&lt;p&gt;I’m embarrassed to admit that as an early grad student, this is how I simulated this type of process, but this technique is worth mentioning just for how bad it is.&lt;/p&gt;
+&lt;p&gt;Effectively, the idea is to take fixed time steps &lt;span class=&#34;math inline&#34;&gt;\(\Delta t\)&lt;/span&gt;, and each step, check whether to jump or evolve &lt;span class=&#34;math inline&#34;&gt;\(X_t\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;In pseudocode, this looks like&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;at step i:
+    eff_rate &amp;lt;- lambda(x(i)) # current value of the effective rate 
+    next_jump &amp;lt;- randexp(rate) # generate an exponential rand num with this rate
+
+    if next_jump &amp;lt; dt: # check whether jump occurred 
+        x(i+1) = # do jump procedure
+    else 
+        x(i+1) =  # evolve with F(x(i))&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;Note that this can be thought of as making the approximation that
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+\int_{\tau_{n-1}}^{\tau_{n-1}+\Delta t} \lambda(X_t) \, \mathrm{d} t \approx \lambda(X_{\tau_{n-1}})\Delta t,
+\end{equation}\]&lt;/span&gt;
+so we’re treating the rate as unchanging in this time step. Another thing to note is that this introduces irregular times, as the next event either occurs at time &lt;span class=&#34;math inline&#34;&gt;\(\Delta t\)&lt;/span&gt; or whatever the time is to the next event. Furthermore, this technique is &lt;em&gt;slow&lt;/em&gt;, as we’re doing the check at &lt;em&gt;every&lt;/em&gt; time step. Overall, never do this.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div id=&#34;fictitious-jump-method&#34; class=&#34;section level2&#34;&gt;
+&lt;h2&gt;Fictitious jump method&lt;/h2&gt;
+&lt;p&gt;Although the aforementioned technique is bad, it lays the groundwork for a much better technique called the &lt;em&gt;Fictitious jump method&lt;/em&gt;. In spirit, the idea is the same: generate possible jump times and “reject” some based on probability of it actually occurring. This procedure is ubiquitous in stochastic simulation, and goes under the apt name &lt;a href=&#34;https://en.wikipedia.org/wiki/Rejection_sampling&#34;&gt;rejection sampling&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;The crux of this method is finding some &lt;span class=&#34;math inline&#34;&gt;\(\lambda_{\infty}\)&lt;/span&gt; such that
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+\sup_{x \in \mathbb{R}} \lambda(x) &amp;lt; \lambda_{\infty}.
+\end{equation}\]&lt;/span&gt;
+That is, we want an &lt;em&gt;upper bound&lt;/em&gt; for our jump rate and then use this to generate possible jump times. The algorithm is then&lt;/p&gt;
+&lt;div id=&#34;fictitious-jump-method-fjm&#34; class=&#34;section level3&#34;&gt;
+&lt;h3&gt;Fictitious jump method (FJM)&lt;/h3&gt;
+&lt;p&gt;At step &lt;span class=&#34;math inline&#34;&gt;\(n\)&lt;/span&gt;,&lt;/p&gt;
+&lt;ol style=&#34;list-style-type: decimal&#34;&gt;
+&lt;li&gt;generate &lt;span class=&#34;math inline&#34;&gt;\(S_n \sim \mathcal{E}(\lambda_\infty)\)&lt;/span&gt;, where &lt;span class=&#34;math inline&#34;&gt;\(\mathcal{E}\)&lt;/span&gt; is the exponential distribution.&lt;/li&gt;
+&lt;li&gt;set &lt;span class=&#34;math inline&#34;&gt;\(\tau_n = \tau_{n-1} + S_n\)&lt;/span&gt;&lt;/li&gt;
+&lt;li&gt;evolve &lt;span class=&#34;math inline&#34;&gt;\(X_t = F(X_t)\)&lt;/span&gt; for &lt;span class=&#34;math inline&#34;&gt;\(t \in [\tau_{n-1},\tau_{n}^-]\)&lt;/span&gt;.&lt;/li&gt;
+&lt;li&gt;either, with probability &lt;span class=&#34;math inline&#34;&gt;\(1-\lambda(X_{\tau_n^-})/\lambda_\infty\)&lt;/span&gt; set &lt;span class=&#34;math inline&#34;&gt;\(X_{\tau_n} = X_{\tau_n^-}\)&lt;/span&gt; (no jump occurs)
+&lt;strong&gt;or&lt;/strong&gt;
+a jump occurs, and set &lt;span class=&#34;math inline&#34;&gt;\(X_{\tau_n}\)&lt;/span&gt; accordingly.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;There are certainly a few perks to this technique from the previous. Note that the use of constant &lt;span class=&#34;math inline&#34;&gt;\(\lambda_{\infty}\)&lt;/span&gt; allows all the times to be generated upfront (as opposed to the naïve technique where the times were generated on the fly). Because these times are generated up front, evolving &lt;span class=&#34;math inline&#34;&gt;\(X_t\)&lt;/span&gt; for a known time window (step 3) is easy: basically throw it into your favorite ODE solver. This wasn’t the case in the previous method, where the jump check was performed at each time step.&lt;/p&gt;
+&lt;p&gt;However, there are considerable drawbacks to FJM as well. What if &lt;span class=&#34;math inline&#34;&gt;\(\lambda(x)\)&lt;/span&gt; has no obvious upper bound? Furthermore, if &lt;span class=&#34;math inline&#34;&gt;\(X_t\)&lt;/span&gt; spends lot of time in a region where &lt;span class=&#34;math inline&#34;&gt;\(\lambda(X_t) \ll \lambda_\infty\)&lt;/span&gt;, this technique spends most of its iterations rejecting possible jump times while taking relatively small step sizes, producing a considerably inefficient result.&lt;/p&gt;
+&lt;p&gt;There are improvements that can be made to this technique, called the “sub-domain” method, which basically tries to use a local approximation of &lt;span class=&#34;math inline&#34;&gt;\(\lambda_\infty\)&lt;/span&gt; based on a partitioning of the state space, but finding these partitions is non-trivial or even rarely possible.&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div id=&#34;the-true-jump-method&#34; class=&#34;section level1&#34;&gt;
+&lt;h1&gt;The true jump method&lt;/h1&gt;
+&lt;p&gt;While the aforementioned techniques are in reality, &lt;em&gt;fine&lt;/em&gt; for simulating these processes, they have some annoying drawbacks. I’ll lastly present the &lt;strong&gt;true jump method&lt;/strong&gt; (TJM), which I believe is the sweet spot of all of these, and is also the technique I use for my simulations in this context.&lt;/p&gt;
+&lt;p&gt;The whole idea behind this technique is to do a clever time change. Akin to the previous methods, for a fixed next jump time &lt;span class=&#34;math inline&#34;&gt;\(u\)&lt;/span&gt;, the effective &lt;span class=&#34;math inline&#34;&gt;\(n\)&lt;/span&gt;th jump rate is then &lt;span class=&#34;math inline&#34;&gt;\(S_n\)&lt;/span&gt;
+&lt;span class=&#34;math display&#34; id=&#34;eq:rateint&#34;&gt;\[\begin{equation}
+\int_{\tau_{n-1}}^{\tau_{n-1}+u} \lambda(X_t) \, \mathrm{d}t = S_n.\tag{2}
+\end{equation}\]&lt;/span&gt;
+However, we can think of &lt;a href=&#34;#eq:rateint&#34;&gt;(2)&lt;/a&gt; in the inverse manner: if we generate &lt;span class=&#34;math inline&#34;&gt;\(S_n\)&lt;/span&gt; up front, can we solve for &lt;span class=&#34;math inline&#34;&gt;\(u\)&lt;/span&gt;? Rewriting it slightly
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+\int_{\tau_{n-1}}^{\sigma(s)} \lambda(X_t) \, \mathrm{d}t = s.
+\end{equation}\]&lt;/span&gt;
+and differentiating with respect to &lt;span class=&#34;math inline&#34;&gt;\(s\)&lt;/span&gt;, we get back the ODE
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+\dot{\sigma}(s) \lambda(X_{\sigma(s)}) = 1.
+\end{equation}\]&lt;/span&gt;
+This, while seemingly unimpressive gives us the whole technique: we’ll perform a random time change &lt;span class=&#34;math inline&#34;&gt;\(t \rightarrow s\)&lt;/span&gt; so that between jumps, the effective jump rate is always intensity &lt;span class=&#34;math inline&#34;&gt;\(1\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;That is, define the time-changed solution to be
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+y(s) = X_{\sigma(s)}, 
+\end{equation}\]&lt;/span&gt;
+so that we are left with the system of equations
+&lt;span class=&#34;math display&#34; id=&#34;eq:TJMsyst&#34;&gt;\[\begin{equation}
+\begin{cases} \tag{3}
+\dot{y}(s) =  F(y)/\lambda(y),\\
+\dot{\sigma}(s) = 1/\lambda(y). 
+\end{cases}
+\end{equation}\]&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;In summary, the algorithm is then&lt;/p&gt;
+&lt;div id=&#34;true-jump-method-tjm&#34; class=&#34;section level3&#34;&gt;
+&lt;h3&gt;True jump method (TJM)&lt;/h3&gt;
+&lt;p&gt;At each step &lt;span class=&#34;math inline&#34;&gt;\(n\)&lt;/span&gt;,&lt;/p&gt;
+&lt;ol style=&#34;list-style-type: decimal&#34;&gt;
+&lt;li&gt;generate &lt;span class=&#34;math inline&#34;&gt;\(S_n \sim \mathcal{E}(1)\)&lt;/span&gt;, where &lt;span class=&#34;math inline&#34;&gt;\(\mathcal{E}\)&lt;/span&gt; is the exponential distribution.&lt;/li&gt;
+&lt;li&gt;Set &lt;span class=&#34;math inline&#34;&gt;\(y(0) = X_{\tau_{n-1}}\)&lt;/span&gt; and evolve the system &lt;a href=&#34;#eq:TJMsyst&#34;&gt;(3)&lt;/a&gt; for &lt;span class=&#34;math inline&#34;&gt;\(y(s), \sigma(s)\)&lt;/span&gt; for &lt;span class=&#34;math inline&#34;&gt;\(s \in [0,1]\)&lt;/span&gt;.&lt;/li&gt;
+&lt;li&gt;Set &lt;span class=&#34;math inline&#34;&gt;\(\tau_{n} = \tau_{n-1}+\sigma(1)\)&lt;/span&gt; and the solution before the jump is &lt;span class=&#34;math inline&#34;&gt;\(X_t = X_{\sigma(s)}\)&lt;/span&gt;.&lt;/li&gt;
+&lt;li&gt;Perform the jump procedure on &lt;span class=&#34;math inline&#34;&gt;\(X_{\tau_n}\)&lt;/span&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;Notice that this procedure has basically all the benefits of the previous with none of the drawbacks. For one, all the random times &lt;span class=&#34;math inline&#34;&gt;\(S_n\)&lt;/span&gt; can be generated up front easily. Between them, evolving the system &lt;a href=&#34;#eq:TJMsyst&#34;&gt;(3)&lt;/a&gt; can be done with any pre-canned solver (e.g. &lt;code&gt;ode45&lt;/code&gt;) without further thought. This technique does not require that &lt;span class=&#34;math inline&#34;&gt;\(\lambda(x)\)&lt;/span&gt; is bounded, so long as there isn’t any explosion.&lt;/p&gt;
+&lt;p&gt;Overall, I think the TJM is elegant, simple, and a worthwhile time investment for anyone that regularly does these types of simulations.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div id=&#34;final-thoughts&#34; class=&#34;section level2&#34;&gt;
+&lt;h2&gt;Final thoughts&lt;/h2&gt;
+&lt;p&gt;One particularly nice thing about TJM is that it can be extended easily to do a Gillespie-type simulation with multiple possible jumps. That is, suppose at any given step we had &lt;span class=&#34;math inline&#34;&gt;\(j\)&lt;/span&gt; possible transitions, indexed by their rates &lt;span class=&#34;math inline&#34;&gt;\(\lambda_1, \lambda_2, \ldots, \lambda_j\)&lt;/span&gt;. Then, in the TJM algorithm, we just replace
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+\lambda_{tot}(x) = \sum_j \lambda_j(x)
+\end{equation}\]&lt;/span&gt;
+and the algorithm is exactly the same. At the jump times, we perform a Gillespie selection of which “reaction” to choose, by assigning relative probabilities
+&lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
+p_j := \frac{\lambda_j(X_{\tau_n})}{\lambda_{tot}(X_{\tau_n})}
+\end{equation}\]&lt;/span&gt;
+and sampling from this distribution to choose the appropriate reaction.&lt;/p&gt;
+&lt;p&gt;Note that at no point in the analysis did we require that &lt;span class=&#34;math inline&#34;&gt;\(F\)&lt;/span&gt; be deterministic. Consequently, either technique is totally valid for jump-SDEs. For instance, &lt;a href=&#34;https://link.aps.org/doi/10.1103/PhysRevE.96.012129&#34;&gt;Lawley and Bressloff&lt;/a&gt; use the FJM (which they refer to as thinning) for Brownian motion with switching diffusion coefficient &lt;span class=&#34;math inline&#34;&gt;\(D\)&lt;/span&gt;.&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+</description>
+    </item>
+    
+    <item>
       <title>Operator splitting</title>
-      <link>http://www.math.utah.edu/~miles/post/operator-splitting/</link>
+      <link>/~miles/post/operator-splitting/</link>
       <pubDate>Fri, 02 Mar 2018 00:00:00 +0000</pubDate>
       
-      <guid>http://www.math.utah.edu/~miles/post/operator-splitting/</guid>
-      <description>&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/htmlwidgets/htmlwidgets.js&#34;&gt;&lt;/script&gt;
-&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/pymjs/pym.v1.js&#34;&gt;&lt;/script&gt;
-&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/widgetframe-binding/widgetframe.js&#34;&gt;&lt;/script&gt;
+      <guid>/~miles/post/operator-splitting/</guid>
+      <description>&lt;script src=&#34;/~miles/~miles/rmarkdown-libs/htmlwidgets/htmlwidgets.js&#34;&gt;&lt;/script&gt;
+&lt;script src=&#34;/~miles/~miles/rmarkdown-libs/pymjs/pym.v1.js&#34;&gt;&lt;/script&gt;
+&lt;script src=&#34;/~miles/~miles/rmarkdown-libs/widgetframe-binding/widgetframe.js&#34;&gt;&lt;/script&gt;
 
 
 &lt;p&gt;I stumbled across the recent paper &lt;a href=&#34;https://arxiv.org/abs/1710.02232&#34;&gt;“Efficient Reactive Brownian Dynamics”&lt;/a&gt;, which proposes a reaction-diffusion scheme based on a technique called Strang splitting. While I was vaguely familiar with the notion of splitting, I wanted to write up this post to think out some of the details I hadn’t previously.&lt;/p&gt;
@@ -244,13 +364,13 @@ A lot of improvements can be made to this code, but hopefully this conveys the b
     
     <item>
       <title>Diffusing diffusivities, stochastic subordination</title>
-      <link>http://www.math.utah.edu/~miles/post/diff-diff/</link>
+      <link>/~miles/post/diff-diff/</link>
       <pubDate>Wed, 06 Dec 2017 00:00:00 +0000</pubDate>
       
-      <guid>http://www.math.utah.edu/~miles/post/diff-diff/</guid>
-      <description>&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/htmlwidgets/htmlwidgets.js&#34;&gt;&lt;/script&gt;
-&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/pymjs/pym.v1.js&#34;&gt;&lt;/script&gt;
-&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/widgetframe-binding/widgetframe.js&#34;&gt;&lt;/script&gt;
+      <guid>/~miles/post/diff-diff/</guid>
+      <description>&lt;script src=&#34;/~miles/~miles/rmarkdown-libs/htmlwidgets/htmlwidgets.js&#34;&gt;&lt;/script&gt;
+&lt;script src=&#34;/~miles/~miles/rmarkdown-libs/pymjs/pym.v1.js&#34;&gt;&lt;/script&gt;
+&lt;script src=&#34;/~miles/~miles/rmarkdown-libs/widgetframe-binding/widgetframe.js&#34;&gt;&lt;/script&gt;
 
 
 &lt;p&gt;In this post, I’ll discuss an idea emerging in the statistical physics community
@@ -312,7 +432,7 @@ and that the tails (large &lt;span class=&#34;math inline&#34;&gt;\(x\)&lt;/span
 &lt;p&gt;We’ve stumbled into an interesting question: what &lt;em&gt;is&lt;/em&gt; particle 2 doing? It looks like classical diffusion in some ways (linear MSD),
 but distinctly different in others (non-Gaussian displacement). While I motivated this with simulated data, there is precedence for investigation from experiments.&lt;/p&gt;
 &lt;div class=&#34;figure&#34; style=&#34;text-align: center&#34;&gt;&lt;span id=&#34;fig:wangfigs&#34;&gt;&lt;/span&gt;
-&lt;img src=&#34;http://www.math.utah.edu/~miles/~miles/img/diff-diff/wangfigs.png&#34; alt=&#34;Experimentally observed^[B. Wang et al., PNAS (2009) &amp;lt;a href=&amp;quot;http://www.pnas.org/content/106/36/15160.abstract&amp;quot;&amp;gt;&amp;lt;i class=&amp;quot;fa fa-external-link fa-1x&amp;quot;&amp;gt;&amp;lt;/i&amp;gt;&amp;lt;/a&amp;gt;] anomalous, yet diffusive behavior. Beads on lipid bilayer tubes and entangled in actin webs are both bound to have linear MSDs and non-Gaussian displacements.&#34; width=&#34;80%&#34; /&gt;
+&lt;img src=&#34;/~miles/~miles/img/diff-diff/wangfigs.png&#34; alt=&#34;Experimentally observed^[B. Wang et al., PNAS (2009) &amp;lt;a href=&amp;quot;http://www.pnas.org/content/106/36/15160.abstract&amp;quot;&amp;gt;&amp;lt;i class=&amp;quot;fa fa-external-link fa-1x&amp;quot;&amp;gt;&amp;lt;/i&amp;gt;&amp;lt;/a&amp;gt;] anomalous, yet diffusive behavior. Beads on lipid bilayer tubes and entangled in actin webs are both bound to have linear MSDs and non-Gaussian displacements.&#34; width=&#34;80%&#34; /&gt;
 &lt;p class=&#34;caption&#34;&gt;
 Figure 4: Experimentally observed&lt;a href=&#34;#fn2&#34; class=&#34;footnote-ref&#34; id=&#34;fnref2&#34;&gt;&lt;sup&gt;2&lt;/sup&gt;&lt;/a&gt; anomalous, yet diffusive behavior. Beads on lipid bilayer tubes and entangled in actin webs are both bound to have linear MSDs and non-Gaussian displacements.
 &lt;/p&gt;
@@ -327,7 +447,7 @@ but nonetheless, there is a clear deviation from classical diffusion.&lt;/p&gt;
 &lt;p&gt;From the motivation, it should be somewhat intuitive that we want to come up with a model that produces both
 i) a linear MSD, ii) non-Gaussian displacements. In the past few years, a number of papers have addressed this.&lt;/p&gt;
 &lt;div class=&#34;figure&#34; style=&#34;text-align: center&#34;&gt;&lt;span id=&#34;fig:diffpapers&#34;&gt;&lt;/span&gt;
-&lt;img src=&#34;http://www.math.utah.edu/~miles/~miles/img/diff-diff/diffdiffpapers.png&#34; alt=&#34;Some recent papers^[A. V. Chechkin et al., Phys. Rev. X  (2017) &amp;lt;a href=&amp;quot;https://journals.aps.org/prx/abstract/10.1103/PhysRevX.7.021002&amp;quot;&amp;gt;&amp;lt;i class=&amp;quot;fa fa-external-link fa-1x&amp;quot;&amp;gt;&amp;lt;/i&amp;gt;&amp;lt;/a&amp;gt;&amp;lt;br&amp;gt; M.V. Chubynsky and G.W. Slater, Phys. Rev. Lett. (2014) &amp;lt;a href=&amp;quot;https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.113.098302&amp;quot;&amp;gt;&amp;lt;i class=&amp;quot;fa fa-external-link fa-1x&amp;quot;&amp;gt;&amp;lt;/i&amp;gt;&amp;lt;/a&amp;gt;&amp;lt;br&amp;gt; Y. Lanoiselée, D. S. Grebenkov, arXiv:&amp;lt;span style=&amp;quot;font-family:Roboto Mono;&amp;quot;&amp;gt;1711.09588&amp;lt;/span&amp;gt; &amp;lt;a href=&amp;quot;https://arxiv.org/abs/1711.09588&amp;quot;&amp;gt;&amp;lt;i class=&amp;quot;fa fa-external-link fa-1x&amp;quot;&amp;gt;&amp;lt;/i&amp;gt;&amp;lt;/a&amp;gt;] with mathematical formalism on the diffusing diffusivity hypothesis.&#34; width=&#34;80%&#34; /&gt;
+&lt;img src=&#34;/~miles/~miles/img/diff-diff/diffdiffpapers.png&#34; alt=&#34;Some recent papers^[A. V. Chechkin et al., Phys. Rev. X  (2017) &amp;lt;a href=&amp;quot;https://journals.aps.org/prx/abstract/10.1103/PhysRevX.7.021002&amp;quot;&amp;gt;&amp;lt;i class=&amp;quot;fa fa-external-link fa-1x&amp;quot;&amp;gt;&amp;lt;/i&amp;gt;&amp;lt;/a&amp;gt;&amp;lt;br&amp;gt; M.V. Chubynsky and G.W. Slater, Phys. Rev. Lett. (2014) &amp;lt;a href=&amp;quot;https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.113.098302&amp;quot;&amp;gt;&amp;lt;i class=&amp;quot;fa fa-external-link fa-1x&amp;quot;&amp;gt;&amp;lt;/i&amp;gt;&amp;lt;/a&amp;gt;&amp;lt;br&amp;gt; Y. Lanoiselée, D. S. Grebenkov, arXiv:&amp;lt;span style=&amp;quot;font-family:Roboto Mono;&amp;quot;&amp;gt;1711.09588&amp;lt;/span&amp;gt; &amp;lt;a href=&amp;quot;https://arxiv.org/abs/1711.09588&amp;quot;&amp;gt;&amp;lt;i class=&amp;quot;fa fa-external-link fa-1x&amp;quot;&amp;gt;&amp;lt;/i&amp;gt;&amp;lt;/a&amp;gt;] with mathematical formalism on the diffusing diffusivity hypothesis.&#34; width=&#34;80%&#34; /&gt;
 &lt;p class=&#34;caption&#34;&gt;
 Figure 5: Some recent papers&lt;a href=&#34;#fn3&#34; class=&#34;footnote-ref&#34; id=&#34;fnref3&#34;&gt;&lt;sup&gt;3&lt;/sup&gt;&lt;/a&gt; with mathematical formalism on the diffusing diffusivity hypothesis.
 &lt;/p&gt;
@@ -431,7 +551,7 @@ behavior observed experimentally: large deviations from Gaussian displacement (l
 &lt;h1&gt;Testing the hypothesis&lt;/h1&gt;
 &lt;p&gt;While the diffusing-diffusivity model seems to indeed match experiments quite well, it isn’t wildly mechanistic in its description. Therefore, we should be curious: can we make predictions from (or “verify”) this very coarsed grained model?&lt;/p&gt;
 &lt;div class=&#34;figure&#34; style=&#34;text-align: center&#34;&gt;&lt;span id=&#34;fig:testfig&#34;&gt;&lt;/span&gt;
-&lt;img src=&#34;http://www.math.utah.edu/~miles/~miles/img/diff-diff/testfig.png&#34; alt=&#34;Experimental setup^[M. Matse et al., Phys. Rev. E  (2017) &amp;lt;a href=&amp;quot;https://journals.aps.org/pre/abstract/10.1103/PhysRevE.96.042604&amp;quot;&amp;gt;&amp;lt;i class=&amp;quot;fa fa-external-link fa-1x&amp;quot;&amp;gt;&amp;lt;/i&amp;gt;&amp;lt;/a&amp;gt; ] attempting to validate the diffusing diffusivity hypothesis.&#34; width=&#34;80%&#34; /&gt;
+&lt;img src=&#34;/~miles/~miles/img/diff-diff/testfig.png&#34; alt=&#34;Experimental setup^[M. Matse et al., Phys. Rev. E  (2017) &amp;lt;a href=&amp;quot;https://journals.aps.org/pre/abstract/10.1103/PhysRevE.96.042604&amp;quot;&amp;gt;&amp;lt;i class=&amp;quot;fa fa-external-link fa-1x&amp;quot;&amp;gt;&amp;lt;/i&amp;gt;&amp;lt;/a&amp;gt; ] attempting to validate the diffusing diffusivity hypothesis.&#34; width=&#34;80%&#34; /&gt;
 &lt;p class=&#34;caption&#34;&gt;
 Figure 6: Experimental setup&lt;a href=&#34;#fn4&#34; class=&#34;footnote-ref&#34; id=&#34;fnref4&#34;&gt;&lt;sup&gt;4&lt;/sup&gt;&lt;/a&gt; attempting to validate the diffusing diffusivity hypothesis.
 &lt;/p&gt;
@@ -465,25 +585,25 @@ where &lt;span class=&#34;math inline&#34;&gt;\(\xi\)&lt;/span&gt; is just a whi
     
     <item>
       <title>Analysis of non-processive molecular motor transport using renewal reward theory</title>
-      <link>http://www.math.utah.edu/~miles/publication/nonprocessrenewal/</link>
+      <link>/~miles/publication/nonprocessrenewal/</link>
       <pubDate>Wed, 15 Nov 2017 00:00:00 +0000</pubDate>
       
-      <guid>http://www.math.utah.edu/~miles/publication/nonprocessrenewal/</guid>
+      <guid>/~miles/publication/nonprocessrenewal/</guid>
       <description></description>
     </item>
     
     <item>
       <title>Stochastic limits, part 2: tails, memory, and the Joseph and Noah effects</title>
-      <link>http://www.math.utah.edu/~miles/post/stoch-lim-part-2/</link>
+      <link>/~miles/post/stoch-lim-part-2/</link>
       <pubDate>Fri, 10 Nov 2017 00:00:00 +0000</pubDate>
       
-      <guid>http://www.math.utah.edu/~miles/post/stoch-lim-part-2/</guid>
-      <description>&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/htmlwidgets/htmlwidgets.js&#34;&gt;&lt;/script&gt;
-&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/pymjs/pym.v1.js&#34;&gt;&lt;/script&gt;
-&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/widgetframe-binding/widgetframe.js&#34;&gt;&lt;/script&gt;
+      <guid>/~miles/post/stoch-lim-part-2/</guid>
+      <description>&lt;script src=&#34;/~miles/~miles/rmarkdown-libs/htmlwidgets/htmlwidgets.js&#34;&gt;&lt;/script&gt;
+&lt;script src=&#34;/~miles/~miles/rmarkdown-libs/pymjs/pym.v1.js&#34;&gt;&lt;/script&gt;
+&lt;script src=&#34;/~miles/~miles/rmarkdown-libs/widgetframe-binding/widgetframe.js&#34;&gt;&lt;/script&gt;
 
 
-&lt;p&gt;In the &lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/post/stoch-lim-part-1/&#34;&gt;last post&lt;/a&gt;, we discussed what happens to the sum
+&lt;p&gt;In the &lt;a href=&#34;/~miles/~miles/post/stoch-lim-part-1/&#34;&gt;last post&lt;/a&gt;, we discussed what happens to the sum
 &lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
 \lim_{N\to\infty} S_N - \mu N, \qquad S_N := \sum_{i=1}^{N} X_i,
 \end{equation}\]&lt;/span&gt;
@@ -594,7 +714,7 @@ a strict requirement for a FCLT? If it is not, to what extent can we break this 
 &lt;div id=&#34;noah-effect&#34; class=&#34;section level2&#34;&gt;
 &lt;h2&gt;Noah effect&lt;/h2&gt;
 &lt;div class=&#34;figure&#34; style=&#34;text-align: center&#34;&gt;&lt;span id=&#34;fig:noah&#34;&gt;&lt;/span&gt;
-&lt;img src=&#34;http://www.math.utah.edu/~miles/~miles/img/stoch-lim/noah.jpg&#34; alt=&#34;Noah on his ark surviving a statistically rare flood.&#34; width=&#34;80%&#34; /&gt;
+&lt;img src=&#34;/~miles/~miles/img/stoch-lim/noah.jpg&#34; alt=&#34;Noah on his ark surviving a statistically rare flood.&#34; width=&#34;80%&#34; /&gt;
 &lt;p class=&#34;caption&#34;&gt;
 Figure 5: Noah on his ark surviving a statistically rare flood.
 &lt;/p&gt;
@@ -608,7 +728,7 @@ this rarity is offset by the extreme magnitude, and these events have a role in 
 &lt;div id=&#34;joseph-effect&#34; class=&#34;section level2&#34;&gt;
 &lt;h2&gt;Joseph effect&lt;/h2&gt;
 &lt;div class=&#34;figure&#34; style=&#34;text-align: center&#34;&gt;&lt;span id=&#34;fig:sevencows&#34;&gt;&lt;/span&gt;
-&lt;img src=&#34;http://www.math.utah.edu/~miles/~miles/img/stoch-lim/seven-cows.jpg&#34; alt=&#34;Joseph received seven years of prosper and then seven years of famine.&#34; width=&#34;70%&#34; /&gt;
+&lt;img src=&#34;/~miles/~miles/img/stoch-lim/seven-cows.jpg&#34; alt=&#34;Joseph received seven years of prosper and then seven years of famine.&#34; width=&#34;70%&#34; /&gt;
 &lt;p class=&#34;caption&#34;&gt;
 Figure 6: Joseph received seven years of prosper and then seven years of famine.
 &lt;/p&gt;
@@ -719,10 +839,10 @@ is far more digestable.&lt;/p&gt;
     
     <item>
       <title>Stenger&#39;s &#34;Proof&#34;?</title>
-      <link>http://www.math.utah.edu/~miles/post/stenger-proof/</link>
+      <link>/~miles/post/stenger-proof/</link>
       <pubDate>Wed, 01 Nov 2017 00:00:00 +0000</pubDate>
       
-      <guid>http://www.math.utah.edu/~miles/post/stenger-proof/</guid>
+      <guid>/~miles/post/stenger-proof/</guid>
       <description>&lt;p&gt;This week, I attended a talk at the &lt;a href=&#34;http://www.math.utah.edu/applied-math/seminar/&#34;&gt;applied math seminar&lt;/a&gt;, given by &lt;a href=&#34;http://www.cs.utah.edu/~stenger/&#34;&gt;Frank Stenger&lt;/a&gt;. In this talk, Stenger summarized the techniques he used in his proposed proof of the Riemann hypothesis, uploaded to the arXiv &lt;a href=&#34;https://arxiv.org/abs/1708.01209&#34;&gt;in August 2017&lt;/a&gt;.&lt;/p&gt;
 &lt;p&gt;In brief, the Riemann hypothesis concerns the Riemann zeta function
 &lt;span class=&#34;math display&#34;&gt;\[\begin{equation}
@@ -746,19 +866,169 @@ which is related to the &lt;em&gt;Mellin transform&lt;/em&gt; of the zeta functi
     </item>
     
     <item>
+      <title>Teaching &amp; Outreach</title>
+      <link>/~miles/teaching/</link>
+      <pubDate>Mon, 30 Oct 2017 00:00:00 -0600</pubDate>
+      
+      <guid>/~miles/teaching/</guid>
+      <description>
+
+&lt;h1 id=&#34;past-course-websites&#34;&gt;Past course websites&lt;/h1&gt;
+
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th align=&#34;left&#34;&gt;&lt;/th&gt;
+&lt;th align=&#34;left&#34;&gt;&lt;/th&gt;
+&lt;th align=&#34;left&#34;&gt;&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;Spring 2017&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;Math 1180: Prob &amp;amp; Stats for Biologists (lab)&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;/~miles/~miles/courses/s17_1180&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;Fall 2016&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;Math 1170: Calc for Biologists (lab)&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;/~miles/~miles/courses/f16_1170&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;Summer 2016&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;Math 3140: Vector Calculus &amp;amp; PDEs&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;/~miles/~miles/courses/su16_3140&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;Spring 2016&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;Math 1321:  Accelerated Engineering Calc II&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;/~miles/~miles/courses/s16_1321&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;Fall 2015&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;Math 2250: ODEs &amp;amp; Linear Algebra&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;/~miles/~miles/courses/f15_2250&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;Spring 2015&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;Math 1320: Engineering Calculus II&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;/~miles/~miles/courses/s15_1320&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;Fall 2014&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;Math 1310: Engineering Calculus I&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;/~miles/~miles/courses/f14_1310&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h1 id=&#34;outreach-materials&#34;&gt;Outreach materials&lt;/h1&gt;
+
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th align=&#34;left&#34;&gt;&lt;/th&gt;
+&lt;th align=&#34;left&#34;&gt;&lt;/th&gt;
+&lt;th align=&#34;left&#34;&gt;&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;Chaos, Fractals, Game of Life&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;Powerpoint + worksheet for Science Day at the U workshop, 2017&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;/~miles/~miles/files/docs/scienceday2017_pres.pptx&#34;&gt; &lt;i class=&#34;fa fa-file-powerpoint-o fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt; &lt;a href=&#34;/~miles/~miles/files/docs/scienceday2017_ws.pdf&#34;&gt; &lt;i class=&#34;fa fa-file-pdf-o fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;Zombies + Math&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;Presentation + worksheet for workshop to incarcerated youth, 2017&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;/~miles/~miles/files/docs/zombietalk.pdf&#34;&gt; &lt;i class=&#34;fa fa-file-pdf-o fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt; &lt;a href=&#34;/~miles/~miles/files/docs/zombiews.pdf&#34;&gt; &lt;i class=&#34;fa fa-file-pdf-o fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;Disorder from Diffusion&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;Pi Day at the Leonardo Museum, 2016&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;https://docs.google.com/presentation/d/1CK8u9wQ10kS0SWT4XCV6HQjG10I66vUnd9LQwpy66WE/pub?start=false&amp;loop=false&amp;delayms=60000&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;PDS: Algebraic Geometry + Math Bio&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;UofU Math Dept Graduate Student Colloq, 2016&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;/~miles/~miles/files/docs/gsac2016.pdf&#34;&gt; &lt;i class=&#34;fa fa-file-pdf-o fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;An Introduction to Pattern Formation&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;UofU Math Dept Undergraduate Colloq, 2015&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;https://slides.com/cmiles/undergrad_colloq_2015/&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;The Monty Hall Problem&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;Science Day at the U, 2015&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;https://slides.com/cmiles/scienceday2015-montyhall/&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h1 id=&#34;notes&#34;&gt;Notes&lt;/h1&gt;
+
+&lt;p&gt;I&amp;rsquo;ve written up some notes for personal use that may helpful for others.&lt;/p&gt;
+
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th align=&#34;left&#34;&gt;&lt;/th&gt;
+&lt;th align=&#34;left&#34;&gt;&lt;/th&gt;
+&lt;th align=&#34;left&#34;&gt;&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;Linear Operators &amp;amp; Spectral Theory&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;Taken from Math 6710 at Utah, the written qualifying exam class&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;/~miles/~miles/files/docs/6710notes.pdf&#34;&gt; &lt;i class=&#34;fa fa-file-pdf-o fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;Ordinary Differential Equations&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;Taken from Math 6410 at Utah, the written qualifying exam class&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;/~miles/~miles/files/docs/6410notes.pdf&#34;&gt; &lt;i class=&#34;fa fa-file-pdf-o fa-2x &#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td align=&#34;left&#34;&gt;Weak Noise Escape Problems&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;WKB theory, Hamilton-Jacobi formulations of metastable escape&lt;/td&gt;
+&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;/~miles/~miles/files/docs/escape_problems.pdf&#34;&gt; &lt;i class=&#34;fa fa-file-pdf-o fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+</description>
+    </item>
+    
+    <item>
       <title>Stochastic limits, part 1: CLT,  Donsker’s FCLT</title>
-      <link>http://www.math.utah.edu/~miles/post/stoch-lim-part-1/</link>
+      <link>/~miles/post/stoch-lim-part-1/</link>
       <pubDate>Sat, 21 Oct 2017 00:00:00 +0000</pubDate>
       
-      <guid>http://www.math.utah.edu/~miles/post/stoch-lim-part-1/</guid>
-      <description>&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/htmlwidgets/htmlwidgets.js&#34;&gt;&lt;/script&gt;
-&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/pymjs/pym.v1.js&#34;&gt;&lt;/script&gt;
-&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/widgetframe-binding/widgetframe.js&#34;&gt;&lt;/script&gt;
+      <guid>/~miles/post/stoch-lim-part-1/</guid>
+      <description>&lt;script src=&#34;/~miles/~miles/rmarkdown-libs/htmlwidgets/htmlwidgets.js&#34;&gt;&lt;/script&gt;
+&lt;script src=&#34;/~miles/~miles/rmarkdown-libs/pymjs/pym.v1.js&#34;&gt;&lt;/script&gt;
+&lt;script src=&#34;/~miles/~miles/rmarkdown-libs/widgetframe-binding/widgetframe.js&#34;&gt;&lt;/script&gt;
 
 
 &lt;p&gt;In the ever-growing list of talks I’ve suffered through, I’ve noticed a bizarre trend in many given by mathematicians considered “rockstars”: half the talk consists of rambling about old, obscure books in their field. I’m honestly not sure if this is simply because they can get away with it because they’re already famous, or because arcane tomes are a genuinely good source of information. I’m operating under the latter assumption. This post (and likely a large portion of the blog) will consist of me babbling about books I’m currently working through.&lt;/p&gt;
 &lt;p&gt;The first book on the agenda is on stochastic limits, by Whitt.&lt;/p&gt;
-&lt;p&gt;&lt;img width=250px src=&#34;http://www.math.utah.edu/~miles/~miles/img/stoch-lim/wittbook.jpg&#34; alt=&#34;Whitt&#39;s book&#34;/&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img width=250px src=&#34;/~miles/~miles/img/stoch-lim/wittbook.jpg&#34; alt=&#34;Whitt&#39;s book&#34;/&gt;&lt;/p&gt;
 &lt;p&gt;This book isn’t really old (circa 2002) or obscure, but I had recently falsely hoped to use a result in it for a paper and couldn’t, so it seemed like a perfect candidate to blog about. A big theme of the book, which I love, is how do we make sense of randomness? Answer: by seeing enough of it to discern a structure. The second big point, which is a little more subtle, is that, in the long run, many underlying details don’t matter. That is, we’ll see that large families of distributions with similar properties ultimately look “the same” in some sense. In this post, I’ll go over the most standard case, which basically is when everything goes “right.” This is the setup I was most familiar with, but is necessary to establish when/how things can go wrong (which is more interesting, and will be covered in the next post).&lt;/p&gt;
 &lt;div id=&#34;a-game-of-chance&#34; class=&#34;section level1&#34;&gt;
 &lt;h1&gt;A game of chance&lt;/h1&gt;
@@ -919,13 +1189,13 @@ Figure 4: &lt;span class=&#34;math inline&#34;&gt;\(S_n\)&lt;/span&gt; for &lt;s
     
     <item>
       <title>Chris is starting a blog in 2017</title>
-      <link>http://www.math.utah.edu/~miles/post/first-post/</link>
+      <link>/~miles/post/first-post/</link>
       <pubDate>Wed, 18 Oct 2017 00:00:00 +0000</pubDate>
       
-      <guid>http://www.math.utah.edu/~miles/post/first-post/</guid>
-      <description>&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/htmlwidgets/htmlwidgets.js&#34;&gt;&lt;/script&gt;
-&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/pymjs/pym.v1.js&#34;&gt;&lt;/script&gt;
-&lt;script src=&#34;http://www.math.utah.edu/~miles/~miles/rmarkdown-libs/widgetframe-binding/widgetframe.js&#34;&gt;&lt;/script&gt;
+      <guid>/~miles/post/first-post/</guid>
+      <description>&lt;script src=&#34;/~miles/~miles/rmarkdown-libs/htmlwidgets/htmlwidgets.js&#34;&gt;&lt;/script&gt;
+&lt;script src=&#34;/~miles/~miles/rmarkdown-libs/pymjs/pym.v1.js&#34;&gt;&lt;/script&gt;
+&lt;script src=&#34;/~miles/~miles/rmarkdown-libs/widgetframe-binding/widgetframe.js&#34;&gt;&lt;/script&gt;
 
 
 &lt;p&gt;#Why?&lt;/p&gt;
@@ -946,7 +1216,7 @@ Figure 4: &lt;span class=&#34;math inline&#34;&gt;\(S_n\)&lt;/span&gt; for &lt;s
 &lt;p&gt;Because the posts are written in Rmarkdown, R code embeds seamlessly, including plots&lt;/p&gt;
 &lt;pre class=&#34;r&#34;&gt;&lt;code&gt;pie(c(Sky = 78, &amp;quot;Sunny side of pyramid&amp;quot; = 17, &amp;quot;Shady side of pyramid&amp;quot; = 5),
     init.angle = 315, col = c(&amp;quot;deepskyblue&amp;quot;, &amp;quot;yellow&amp;quot;, &amp;quot;yellow3&amp;quot;), border = FALSE)&lt;/code&gt;&lt;/pre&gt;
-&lt;p&gt;&lt;img src=&#34;http://www.math.utah.edu/~miles/~miles/post/2017-10-18-first-post_files/figure-html/unnamed-chunk-1-1.png&#34; width=&#34;672&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/~miles/~miles/post/2017-10-18-first-post_files/figure-html/unnamed-chunk-1-1.png&#34; width=&#34;672&#34; /&gt;&lt;/p&gt;
 &lt;p&gt;While possible to make R’s plots look pretty, I was hoping to make the plots interactive in some way, which it turns out is exactly what htmlwidgets and the usfeul R package &lt;a href=&#34;https://github.com/bhaskarvk/widgetframe&#34;&gt;widgetframes&lt;/a&gt; provides. With htmlwidgets, I can now use a bunch of nice R libraries like &lt;a href=&#34;https://plot.ly/&#34;&gt;plotly&lt;/a&gt; and &lt;a href=&#34;https://rstudio.github.io/leaflet/&#34;&gt;leaflet&lt;/a&gt;.&lt;/p&gt;
 &lt;p&gt;For example, here is an interactive Plotly plot&lt;/p&gt;
 &lt;pre class=&#34;r&#34;&gt;&lt;code&gt;library(plotly)
@@ -985,188 +1255,38 @@ frameWidget(m)&lt;/code&gt;&lt;/pre&gt;
     
     <item>
       <title>Complex nearly immotile behavior of microtubule-associated cargos</title>
-      <link>http://www.math.utah.edu/~miles/publication/nearlyimmotile/</link>
+      <link>/~miles/publication/nearlyimmotile/</link>
       <pubDate>Fri, 01 Sep 2017 00:00:00 +0000</pubDate>
       
-      <guid>http://www.math.utah.edu/~miles/publication/nearlyimmotile/</guid>
+      <guid>/~miles/publication/nearlyimmotile/</guid>
       <description></description>
     </item>
     
     <item>
       <title>Jump locations of jump-diffusion processes with state-dependent rates</title>
-      <link>http://www.math.utah.edu/~miles/publication/jumplocs/</link>
+      <link>/~miles/publication/jumplocs/</link>
       <pubDate>Tue, 22 Aug 2017 00:00:00 +0000</pubDate>
       
-      <guid>http://www.math.utah.edu/~miles/publication/jumplocs/</guid>
+      <guid>/~miles/publication/jumplocs/</guid>
       <description></description>
     </item>
     
     <item>
       <title>Bidirectionality from cargo thermal fluctuations in motor-mediated transport</title>
-      <link>http://www.math.utah.edu/~miles/publication/bidirectional/</link>
+      <link>/~miles/publication/bidirectional/</link>
       <pubDate>Fri, 07 Jul 2017 00:00:00 +0000</pubDate>
       
-      <guid>http://www.math.utah.edu/~miles/publication/bidirectional/</guid>
+      <guid>/~miles/publication/bidirectional/</guid>
       <description></description>
     </item>
     
     <item>
       <title>Exploring the connection between matroids and network coding theory</title>
-      <link>http://www.math.utah.edu/~miles/publication/matroid/</link>
+      <link>/~miles/publication/matroid/</link>
       <pubDate>Mon, 08 Jul 2013 00:00:00 +0000</pubDate>
       
-      <guid>http://www.math.utah.edu/~miles/publication/matroid/</guid>
+      <guid>/~miles/publication/matroid/</guid>
       <description></description>
-    </item>
-    
-    <item>
-      <title>Teaching &amp; Outreach</title>
-      <link>http://www.math.utah.edu/~miles/teaching/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>http://www.math.utah.edu/~miles/teaching/</guid>
-      <description>
-
-&lt;h1 id=&#34;past-course-websites&#34;&gt;Past course websites&lt;/h1&gt;
-
-&lt;table&gt;
-&lt;thead&gt;
-&lt;tr&gt;
-&lt;th align=&#34;left&#34;&gt;&lt;/th&gt;
-&lt;th align=&#34;left&#34;&gt;&lt;/th&gt;
-&lt;th align=&#34;left&#34;&gt;&lt;/th&gt;
-&lt;/tr&gt;
-&lt;/thead&gt;
-
-&lt;tbody&gt;
-&lt;tr&gt;
-&lt;td align=&#34;left&#34;&gt;Spring 2017&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;Math 1180: Prob &amp;amp; Stats for Biologists (lab)&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/courses/s17_1180&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
-&lt;/tr&gt;
-
-&lt;tr&gt;
-&lt;td align=&#34;left&#34;&gt;Fall 2016&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;Math 1170: Calc for Biologists (lab)&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/courses/f16_1170&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
-&lt;/tr&gt;
-
-&lt;tr&gt;
-&lt;td align=&#34;left&#34;&gt;Summer 2016&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;Math 3140: Vector Calculus &amp;amp; PDEs&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/courses/su16_3140&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
-&lt;/tr&gt;
-
-&lt;tr&gt;
-&lt;td align=&#34;left&#34;&gt;Spring 2016&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;Math 1321:  Accelerated Engineering Calc II&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/courses/s16_1321&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
-&lt;/tr&gt;
-
-&lt;tr&gt;
-&lt;td align=&#34;left&#34;&gt;Fall 2015&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;Math 2250: ODEs &amp;amp; Linear Algebra&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/courses/f15_2250&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
-&lt;/tr&gt;
-
-&lt;tr&gt;
-&lt;td align=&#34;left&#34;&gt;Spring 2015&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;Math 1320: Engineering Calculus II&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/courses/s15_1320&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
-&lt;/tr&gt;
-
-&lt;tr&gt;
-&lt;td align=&#34;left&#34;&gt;Fall 2014&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;Math 1310: Engineering Calculus I&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/courses/f14_1310&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
-&lt;/tr&gt;
-&lt;/tbody&gt;
-&lt;/table&gt;
-
-&lt;h1 id=&#34;outreach-materials&#34;&gt;Outreach materials&lt;/h1&gt;
-
-&lt;table&gt;
-&lt;thead&gt;
-&lt;tr&gt;
-&lt;th align=&#34;left&#34;&gt;&lt;/th&gt;
-&lt;th align=&#34;left&#34;&gt;&lt;/th&gt;
-&lt;th align=&#34;left&#34;&gt;&lt;/th&gt;
-&lt;/tr&gt;
-&lt;/thead&gt;
-
-&lt;tbody&gt;
-&lt;tr&gt;
-&lt;td align=&#34;left&#34;&gt;Chaos, Fractals, Game of Life&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;Powerpoint + worksheet for Science Day at the U workshop, 2017&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/files/docs/scienceday2017_pres.pptx&#34;&gt; &lt;i class=&#34;fa fa-file-powerpoint-o fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt; &lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/files/docs/scienceday2017_ws.pdf&#34;&gt; &lt;i class=&#34;fa fa-file-pdf-o fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
-&lt;/tr&gt;
-
-&lt;tr&gt;
-&lt;td align=&#34;left&#34;&gt;Zombies + Math&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;Presentation + worksheet for workshop to incarcerated youth, 2017&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/files/docs/zombietalk.pdf&#34;&gt; &lt;i class=&#34;fa fa-file-pdf-o fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt; &lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/files/docs/zombiews.pdf&#34;&gt; &lt;i class=&#34;fa fa-file-pdf-o fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
-&lt;/tr&gt;
-
-&lt;tr&gt;
-&lt;td align=&#34;left&#34;&gt;Disorder from Diffusion&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;Pi Day at the Leonardo Museum, 2016&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;https://docs.google.com/presentation/d/1CK8u9wQ10kS0SWT4XCV6HQjG10I66vUnd9LQwpy66WE/pub?start=false&amp;loop=false&amp;delayms=60000&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
-&lt;/tr&gt;
-
-&lt;tr&gt;
-&lt;td align=&#34;left&#34;&gt;PDS: Algebraic Geometry + Math Bio&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;UofU Math Dept Graduate Student Colloq, 2016&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/files/docs/gsac2016.pdf&#34;&gt; &lt;i class=&#34;fa fa-file-pdf-o fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
-&lt;/tr&gt;
-
-&lt;tr&gt;
-&lt;td align=&#34;left&#34;&gt;An Introduction to Pattern Formation&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;UofU Math Dept Undergraduate Colloq, 2015&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;https://slides.com/cmiles/undergrad_colloq_2015/&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
-&lt;/tr&gt;
-
-&lt;tr&gt;
-&lt;td align=&#34;left&#34;&gt;The Monty Hall Problem&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;Science Day at the U, 2015&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;https://slides.com/cmiles/scienceday2015-montyhall/&#34;&gt; &lt;i class=&#34;fa fa-external-link fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
-&lt;/tr&gt;
-&lt;/tbody&gt;
-&lt;/table&gt;
-
-&lt;h1 id=&#34;notes&#34;&gt;Notes&lt;/h1&gt;
-
-&lt;p&gt;I&amp;rsquo;ve written up some notes for personal use that may helpful for others.&lt;/p&gt;
-
-&lt;table&gt;
-&lt;thead&gt;
-&lt;tr&gt;
-&lt;th align=&#34;left&#34;&gt;&lt;/th&gt;
-&lt;th align=&#34;left&#34;&gt;&lt;/th&gt;
-&lt;th align=&#34;left&#34;&gt;&lt;/th&gt;
-&lt;/tr&gt;
-&lt;/thead&gt;
-
-&lt;tbody&gt;
-&lt;tr&gt;
-&lt;td align=&#34;left&#34;&gt;Linear Operators &amp;amp; Spectral Theory&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;Taken from Math 6710 at Utah, the written qualifying exam class&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/files/docs/6710notes.pdf&#34;&gt; &lt;i class=&#34;fa fa-file-pdf-o fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
-&lt;/tr&gt;
-
-&lt;tr&gt;
-&lt;td align=&#34;left&#34;&gt;Ordinary Differential Equations&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;Taken from Math 6410 at Utah, the written qualifying exam class&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/files/docs/6410notes.pdf&#34;&gt; &lt;i class=&#34;fa fa-file-pdf-o fa-2x &#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
-&lt;/tr&gt;
-
-&lt;tr&gt;
-&lt;td align=&#34;left&#34;&gt;Weak Noise Escape Problems&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;WKB theory, Hamilton-Jacobi formulations of metastable escape&lt;/td&gt;
-&lt;td align=&#34;left&#34;&gt;&lt;a href=&#34;http://www.math.utah.edu/~miles/~miles/files/docs/escape_problems.pdf&#34;&gt; &lt;i class=&#34;fa fa-file-pdf-o fa-2x&#34; aria-hidden=&#34;true&#34;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/td&gt;
-&lt;/tr&gt;
-&lt;/tbody&gt;
-&lt;/table&gt;
-</description>
     </item>
     
   </channel>

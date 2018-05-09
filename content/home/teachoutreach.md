@@ -14,7 +14,6 @@ weight = 30
 
 +++
 
-# Spring 2018
+# Summer 2018
 
-None, supported by the [NSF](https://www.nsf.gov/awardsearch/showAward?AWD_ID=1515130).
-
+Math 3150.01 Partial differential equations (PDEs) <br> [Canvas site](https://canvas.utah.edu/courses/499302)

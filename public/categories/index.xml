@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Categories on Chris Miles</title>
+    <link>/~miles/categories/</link>
+    <description>Recent content in Categories on Chris Miles</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    
+	<atom:link href="/~miles/categories/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Math</title>
+      <link>/~miles/categories/math/</link>
+      <pubDate>Tue, 01 May 2018 00:00:00 +0000</pubDate>
+      
+      <guid>/~miles/categories/math/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Physics</title>
+      <link>/~miles/categories/physics/</link>
+      <pubDate>Wed, 06 Dec 2017 00:00:00 +0000</pubDate>
+      
+      <guid>/~miles/categories/physics/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Potpourri</title>
+      <link>/~miles/categories/potpourri/</link>
+      <pubDate>Wed, 18 Oct 2017 00:00:00 +0000</pubDate>
+      
+      <guid>/~miles/categories/potpourri/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

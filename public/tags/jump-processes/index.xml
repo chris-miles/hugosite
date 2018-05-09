@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Jump Processes on Chris Miles</title>
+    <link>/~miles/tags/jump-processes/</link>
+    <description>Recent content in Jump Processes on Chris Miles</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Tue, 01 May 2018 00:00:00 +0000</lastBuildDate>
+    
+	<atom:link href="/~miles/tags/jump-processes/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>The true jump method</title>
+      <link>/~miles/post/true-jump-method/</link>
+      <pubDate>Tue, 01 May 2018 00:00:00 +0000</pubDate>
+      
+      <guid>/~miles/post/true-jump-method/</guid>
+      <description>A while ago, I learned a numerical recipe for simulating state-dependent jump processes from this paper by Romain Veltz. After some digging, this book by Graham and Talay seems to introduce the method. It’s a cute trick that even my advisor was excited by, so I figured it seemed like a nice short thing to share.
+Setup Suppose we have some switching process \(X_t\), which between jump events evolves via \[\begin{equation} \frac{\mathrm{d}}{\mathrm{d}t} X_t = F(X_t).</description>
+    </item>
+    
+  </channel>
+</rss>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Anomalous Diffusion on Chris Miles</title>
+    <link>/~miles/tags/anomalous-diffusion/</link>
+    <description>Recent content in Anomalous Diffusion on Chris Miles</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Fri, 10 Nov 2017 00:00:00 +0000</lastBuildDate>
+    
+	<atom:link href="/~miles/tags/anomalous-diffusion/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Stochastic limits, part 2: tails, memory, and the Joseph and Noah effects</title>
+      <link>/~miles/post/stoch-lim-part-2/</link>
+      <pubDate>Fri, 10 Nov 2017 00:00:00 +0000</pubDate>
+      
+      <guid>/~miles/post/stoch-lim-part-2/</guid>
+      <description>In the last post, we discussed what happens to the sum \[\begin{equation} \lim_{N\to\infty} S_N - \mu N, \qquad S_N := \sum_{i=1}^{N} X_i, \end{equation}\] with \(X_i\) drawn from some “nice” distribution with \(\mu := \mathbb{E}[X_i]\). In this scenario, \(\mathbf{S}_N(t) \to \mathbf{B}(t)\), Brownian motion. For this discussion, we’ll have to state a little more explicitly what we mean by “nice.” The two big features we needed are
+finite (first two) moments, i.</description>
+    </item>
+    
+  </channel>
+</rss>

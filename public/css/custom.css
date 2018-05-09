@@ -1,3 +1,16 @@
+
+
+
+.one{
+	list-style:none;
+}
+
+.one li::before {content: "■"; color: #16B1B5;
+  display: inline-block; width: 1em;
+  margin-left: -1em}
+
+  
+ 
 .navbar-default .navbar-brand{
 	text-transform:none;
 	font-size:32px;
@@ -6,12 +19,42 @@
 }
 
 .navbar-default .navbar-nav>.active>a, .navbar-default .navbar-nav>.active>a:focus, .navbar-default .navbar-nav>.active>a:hover {
+
 	font-weight:400px;
      border:none;
 }
 
 .navbar-default .navbar-collapse, .navbar-default .navbar-form{
     border:none;
+}
+
+.homeimgs {  
+   display: inline-block;
+   	    text-align: center;
+    margin-left: auto;
+    margin-right: auto;
+		h-align: middle;
+    padding-bottom: 10px;
+
+}
+
+.homeimgs img {
+	  margin-top:0.5em;
+	vertical-align: middle;
+  margin-bottom:0.5em;
+  width:32.8%;
+     display: inline-block;
+	h-align: middle;
+	    text-align: center;
+    margin-left: auto;
+    margin-right: auto;
+	    padding-bottom: 5px;
+}
+
+@media only screen and (max-width: 500px) {
+.homeimgs img {
+width:49%;
+}
 }
 
 img[src$='#center']
@@ -41,6 +84,7 @@ img[src$='#floatright']
 		min-width:200px;
 
 }
+
 
 p{
 	line-height: 140%;
@@ -99,6 +143,9 @@ font-family: "Nunito";
     margin-top:0px;
     margin-bottom:5px;
     line-height:140%;
+    color:rgba(0,0,0, 0.54);
+     font-family: "Nunito";
+   
 }
 
 

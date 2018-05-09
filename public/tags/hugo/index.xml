@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Hugo on Chris Miles</title>
+    <link>/~miles/tags/hugo/</link>
+    <description>Recent content in Hugo on Chris Miles</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Wed, 18 Oct 2017 00:00:00 +0000</lastBuildDate>
+    
+	<atom:link href="/~miles/tags/hugo/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Chris is starting a blog in 2017</title>
+      <link>/~miles/post/first-post/</link>
+      <pubDate>Wed, 18 Oct 2017 00:00:00 +0000</pubDate>
+      
+      <guid>/~miles/post/first-post/</guid>
+      <description>#Why?
+A quick Google search turns up articles from as early as 2012 insisting that blogging is a dead medium. While this premonition didn’t turn out to be completly true, I think it is fair to say blogging isn’t in its heyday.1 So, why am I starting a blog now?
+###Unavailability of low-stakes writing in academia
+In my day-to-day life, I do a fair amount of writing, but it’s a very specific type, mostly comprising of technical papers and grant proposals.</description>
+    </item>
+    
+  </channel>
+</rss>
